@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { loginUser } from "../services/authService";
 
 export default function LoginPage() {
@@ -7,14 +7,19 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [msg, setMsg] = useState("");
 
+  const navigate = useNavigate();
+
   const submit = async (e) => {
     e.preventDefault();
     setMsg("");
     try {
       await loginUser(username, password);
       setMsg("Login success ✅");
-      // later: redirect to lobby
-      // window.location.href = "/lobby";
+
+      setTimeout(() => {
+        navigate("/loading");
+      }, 1000);
+
     } catch (err) {
       setMsg(err.message);
     }
@@ -32,13 +37,15 @@ export default function LoginPage() {
 
       <div className="sa-card">
         <div className="sa-left">
-          <div className="sa-tag">v2.0.4 Stable</div>
+        
+
           <h1 className="sa-title">
-            DRIVE TO<br />DOMINATE
+            CHASE THE HORIZON<br />CONQUER THE ARENA
           </h1>
+
           <p className="sa-sub">
-            The world's most intense top-down multiplayer racing engine. Sync your garage, join a circuit,
-            and leave your mark.
+            Join real-time 2D multiplayer races. Create rooms, compete with players,
+            and prove your speed on the track.
           </p>
 
           <div className="sa-secure">
@@ -86,10 +93,6 @@ export default function LoginPage() {
             {msg && <div className="sa-msg">{msg}</div>}
           </form>
 
-          <div className="sa-bottom">
-            <span className="sa-mini">DEMO: DIRECT DATABASE ACCESS</span>
-            <span className="sa-link">View Records</span>
-          </div>
         </div>
       </div>
     </div>
