@@ -1,0 +1,112 @@
+.leaderboard-container {
+  padding: 2rem;
+  max-width: 800px;
+  margin: 2rem auto;
+  background: rgba(15, 15, 15, 0.95);
+  border-radius: 15px;
+  box-shadow: 0 8px 32px rgba(0, 255, 234, 0.15);
+  border: 1px solid rgba(0, 255, 234, 0.2);
+  color: #fff;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+.leaderboard-header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.leaderboard-header h1 {
+  font-size: 2.5rem;
+  background: linear-gradient(90deg, #00ffea, #00a2ff);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+}
+
+.leaderboard-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0 8px;
+}
+
+.leaderboard-table th {
+  padding: 12px;
+  text-align: left;
+  color: #00ffea;
+  text-transform: uppercase;
+  font-size: 0.9rem;
+  letter-spacing: 1px;
+  border-bottom: 2px solid rgba(0, 255, 234, 0.1);
+}
+
+.leaderboard-row {
+  background: rgba(255, 255, 255, 0.03);
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.leaderboard-row:hover {
+  background: rgba(0, 255, 234, 0.1);
+  transform: scale(1.02);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+}
+
+.leaderboard-row td {
+  padding: 16px 12px;
+}
+
+.leaderboard-row td:first-child {
+  border-top-left-radius: 8px;
+  border-bottom-left-radius: 8px;
+  font-weight: bold;
+}
+
+.leaderboard-row td:last-child {
+  border-top-right-radius: 8px;
+  border-bottom-right-radius: 8px;
+}
+
+.rank-text {
+  font-size: 1.1rem;
+}
+
+.rank-gold {
+  color: #ffd700;
+  text-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
+}
+
+.rank-silver {
+  color: #c0c0c0;
+  text-shadow: 0 0 10px rgba(192, 192, 192, 0.3);
+}
+
+.rank-bronze {
+  color: #cd7f32;
+  text-shadow: 0 0 10px rgba(205, 127, 50, 0.3);
+}
+
+.no-data {
+  text-align: center;
+  padding: 2rem;
+  color: rgba(255, 255, 255, 0.5);
+  font-style: italic;
+}
+
+.error-message {
+  color: #ff4d4d;
+  background: rgba(255, 77, 77, 0.1);
+  padding: 1rem;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  text-align: center;
+  border: 1px solid rgba(255, 77, 77, 0.2);
+}
+
+.loading-spinner {
+    text-align: center;
+    padding: 20px;
+    color: #00ffea;
+}
