@@ -24,7 +24,13 @@ public class SecurityConfig {
                 .cors(Customizer.withDefaults())
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
+                        // ✅ PUBLIC ENDPOINTS
                         .requestMatchers("/api/register", "/api/login").permitAll()
+
+                        // ✅ ALLOW ROOM APIs (IMPORTANT FIX)
+                        .requestMatchers("/api/rooms/**").permitAll()
+
+                        // 🔒 everything else needs auth
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);

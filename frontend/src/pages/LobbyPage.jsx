@@ -1,38 +1,73 @@
 import { useState } from "react";
-import "../index.css";
+import "./lobby.css";
+import { apiFetch } from "../services/apiClient";
+import { useNavigate } from "react-router-dom";
 
 export default function LobbyPage() {
   const [roomCode, setRoomCode] = useState("");
+  const [createdRoom, setCreatedRoom] = useState("");
+  const [msg, setMsg] = useState("");
 
-  const handleCreateRoom = () => {
-    alert("Creating room...");
-    console.log("Create room");
-    // later: call backend API
+  const navigate = useNavigate();
+
+  // ✅ CREATE ROOM → ONLY SHOW CODE
+  const handleCreateRoom = async () => {
+    try {
+      setMsg("");
+
+      const res = await apiFetch("/api/rooms/create", {
+        method: "POST",
+      });
+
+      // ✅ SHOW CODE (NO NAVIGATION)
+      setCreatedRoom(res.roomCode);
+      setMsg("Room created ✅ Share this code");
+
+    } catch (err) {
+      setMsg(err.message || "Failed to create room ❌");
+    }
   };
 
-  const handleJoinRoom = (e) => {
+  // ✅ JOIN ROOM → GO TO WAITING ROOM
+  const handleJoinRoom = async (e) => {
     e.preventDefault();
 
     if (roomCode.length < 4) {
-      alert("Room code must be at least 4 characters");
+      setMsg("Room code must be at least 4 characters ❌");
       return;
     }
 
-    console.log("Join room with code:", roomCode);
-    // later: call backend API
+    try {
+      setMsg("");
+
+      const res = await apiFetch("/api/rooms/join", {
+        method: "POST",
+        body: JSON.stringify({ roomCode }),
+      });
+
+      // ✅ GO TO WAITING ROOM ONLY HERE
+      navigate(`/waiting/${res.roomCode}`);
+
+    } catch (err) {
+      setMsg(err.message || "Room not found ❌");
+    }
   };
 
   return (
     <div className="auth-container">
       <div className="auth-card">
         <h2>🎮 Game Lobby</h2>
-        <p style={{ fontSize: "0.9rem", opacity: 0.7 }}>
-          Create or join a room to start racing
-        </p>
 
         <button onClick={handleCreateRoom} style={{ marginTop: "15px" }}>
           Create Room
         </button>
+
+        {/* ✅ SHOW CREATED ROOM CODE */}
+        {createdRoom && (
+          <h3 style={{ marginTop: "15px" }}>
+            Room Code: {createdRoom}
+          </h3>
+        )}
 
         <hr style={{ margin: "20px 0", opacity: 0.2 }} />
 
@@ -49,6 +84,12 @@ export default function LobbyPage() {
             Join Room
           </button>
         </form>
+
+        {msg && (
+          <p style={{ marginTop: "10px", color: "red" }}>
+            {msg}
+          </p>
+        )}
       </div>
     </div>
   );

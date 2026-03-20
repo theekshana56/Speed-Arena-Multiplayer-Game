@@ -12,16 +12,17 @@ export default function LoginPage() {
   const submit = async (e) => {
     e.preventDefault();
     setMsg("");
+
     try {
-      await loginUser(username, password);
+      await loginUser(username, password); // ✅ token saved in service
+
       setMsg("Login success ✅");
 
       setTimeout(() => {
         navigate("/loading");
       }, 1000);
-
     } catch (err) {
-      setMsg(err.message);
+      setMsg(err.message || "Login failed ❌");
     }
   };
 
@@ -29,16 +30,10 @@ export default function LoginPage() {
     <div className="sa-bg">
       <header className="sa-topbar">
         <div className="sa-brand">Speed Arena</div>
-        <div className="sa-top-actions">
-          <span className="sa-help">Help</span>
-          <button className="sa-doc-btn">Documentation</button>
-        </div>
       </header>
 
       <div className="sa-card">
         <div className="sa-left">
-        
-
           <h1 className="sa-title">
             CHASE THE HORIZON<br />CONQUER THE ARENA
           </h1>
@@ -47,14 +42,6 @@ export default function LoginPage() {
             Join real-time 2D multiplayer races. Create rooms, compete with players,
             and prove your speed on the track.
           </p>
-
-          <div className="sa-secure">
-            <span className="sa-shield">🛡</span>
-            <div>
-              <div className="sa-secure-title">SECURE ENTRY</div>
-              <div className="sa-secure-sub">JWT-BASED AUTHENTICATION ACTIVE</div>
-            </div>
-          </div>
         </div>
 
         <div className="sa-right">
@@ -66,7 +53,6 @@ export default function LoginPage() {
           </div>
 
           <h2 className="sa-form-title">WELCOME BACK</h2>
-          <p className="sa-form-sub">Resume your race and access your garage.</p>
 
           <form onSubmit={submit}>
             <label className="sa-label">USERNAME</label>
@@ -92,7 +78,6 @@ export default function LoginPage() {
 
             {msg && <div className="sa-msg">{msg}</div>}
           </form>
-
         </div>
       </div>
     </div>

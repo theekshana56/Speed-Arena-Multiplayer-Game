@@ -1,3 +1,5 @@
+// src/services/authService.js
+
 import { apiFetch } from "./apiClient";
 import { tokenService } from "./tokenService";
 
@@ -6,7 +8,11 @@ export async function registerUser(username, email, password) {
     method: "POST",
     body: JSON.stringify({ username, email, password }),
   });
-  if (data?.token) tokenService.set(data.token);
+
+  if (data?.token) {
+    tokenService.set(data.token); // ✅ save token
+  }
+
   return data;
 }
 
@@ -15,6 +21,10 @@ export async function loginUser(username, password) {
     method: "POST",
     body: JSON.stringify({ username, password }),
   });
-  if (data?.token) tokenService.set(data.token);
+
+  if (data?.token) {
+    tokenService.set(data.token); // ✅ save token
+  }
+
   return data;
 }

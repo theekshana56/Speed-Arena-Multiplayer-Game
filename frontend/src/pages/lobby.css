@@ -1,0 +1,92 @@
+/* 🌌 Background */
+.auth-container {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #0f172a, #1e293b);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-family: 'Segoe UI', sans-serif;
+}
+
+/* 🎮 Card */
+.auth-card {
+  background: #111827;
+  padding: 30px 40px;
+  border-radius: 16px;
+  width: 350px;
+  text-align: center;
+  color: #fff;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+  animation: fadeIn 0.6s ease-in-out;
+}
+
+/* 🎯 Title */
+.auth-card h2 {
+  font-size: 26px;
+  margin-bottom: 10px;
+}
+
+/* 🟣 Buttons */
+.auth-card button {
+  width: 100%;
+  padding: 10px;
+  margin-top: 10px;
+  border: none;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  color: white;
+  font-weight: bold;
+  cursor: pointer;
+  transition: 0.3s;
+}
+
+.auth-card button:hover {
+  transform: scale(1.05);
+  background: linear-gradient(135deg, #7c3aed, #9333ea);
+}
+
+/* 🧾 Input */
+.auth-card input {
+  width: 100%;
+  padding: 10px;
+  border-radius: 10px;
+  border: none;
+  margin-top: 10px;
+  outline: none;
+  background: #1f2937;
+  color: white;
+  text-align: center;
+  font-size: 16px;
+}
+
+/* 🔢 Room Code */
+.auth-card h3 {
+  margin-top: 15px;
+  color: #22c55e;
+  font-weight: bold;
+}
+
+/* ❌ Error message */
+.auth-card p {
+  margin-top: 10px;
+  font-size: 14px;
+}
+
+/* ✨ Divider */
+.auth-card hr {
+  border: none;
+  height: 1px;
+  background: #374151;
+}
+
+/* ✨ Animation */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

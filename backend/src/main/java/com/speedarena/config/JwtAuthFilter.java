@@ -29,6 +29,17 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                                     HttpServletResponse response,
                                     FilterChain filterChain) throws ServletException, IOException {
 
+        String path = request.getRequestURI();
+
+        // ✅ SKIP JWT for auth + rooms (IMPORTANT FIX)
+        if (path.startsWith("/api/rooms") ||
+            path.startsWith("/api/login") ||
+            path.startsWith("/api/register")) {
+
+            filterChain.doFilter(request, response);
+            return;
+        }
+
         String header = request.getHeader(HttpHeaders.AUTHORIZATION);
 
         if (header == null || !header.startsWith("Bearer ")) {
