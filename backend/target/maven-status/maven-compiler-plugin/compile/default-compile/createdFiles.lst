@@ -1,6 +1,8 @@
 com\speedarena\controller\AuthController.class
+com\speedarena\config\WebSocketConfig.class
 com\speedarena\service\AuthService.class
 com\speedarena\dto\RegisterRequest.class
+com\speedarena\dto\SHA_CarState.class
 com\speedarena\SpeedArenaApplication.class
 com\speedarena\config\SecurityConfig.class
 com\speedarena\dto\LoginRequest.class
@@ -9,5 +11,6 @@ com\speedarena\config\JwtService.class
 com\speedarena\dto\AuthResponse.class
 com\speedarena\config\CorsConfig.class
 com\speedarena\config\JwtAuthFilter.class
+com\speedarena\controller\SHA_GameController.class
 com\speedarena\controller\TestController.class
 com\speedarena\model\User.class
