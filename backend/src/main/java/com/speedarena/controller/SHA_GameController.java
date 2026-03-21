@@ -75,15 +75,25 @@ public class SHA_GameController {
             .put(carState.getPlayerId(), carState);
 
         // Check if this player just finished a lap
-        // (Simple logic: frontend will handle real detection; this is for demo)
         if (carState.getLapsCompleted() >= 3 && !"FINISHED".equals(carState.getStatus())) {
             carState.setStatus("FINISHED");
-            // Notify room that a winner exists
+            
+            // Set first-time finish timestamp if not already set in memory
+            Map<String, SHA_CarState> room = gameRooms.get(roomId);
+            SHA_CarState existing = room != null ? room.get(carState.getPlayerId()) : null;
+            if (existing != null && existing.getFinishTime() > 0) {
+                carState.setFinishTime(existing.getFinishTime());
+            } else {
+                carState.setFinishTime(System.currentTimeMillis());
+            }
+
+            // Notify room that a winner exists (just send the ID)
             messagingTemplate.convertAndSend(
                 "/topic/room/" + roomId + "/winner",
-                carState.getPlayerId() + " wins!"
+                carState.getPlayerId()
             );
         }
+
 
         System.out.println("[CAR_MOVE] " + carState);
         return carState;
@@ -146,6 +156,20 @@ public class SHA_GameController {
         System.out.println("[PING] received: " + message);
         return "PONG from server at " + System.currentTimeMillis();
     }
+
+    /**
+     * Broadcasts a start signal to all players in a room.
+     * Triggered by host.
+     */
+    @MessageMapping("/game.start")
+    public void handleGameStart(Map<String, String> payload) {
+        String roomId = payload.get("roomId");
+        if (roomId != null) {
+            System.out.println("[GAME_START] roomId: " + roomId);
+            messagingTemplate.convertAndSend("/topic/room/" + roomId + "/start", "START");
+        }
+    }
+
 
     // ─────────────────────────────────────────────────────────────────────────
     // 4. Helper — get all players in a room (REST-accessible for debugging)

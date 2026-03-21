@@ -6,11 +6,15 @@ com\speedarena\dto\SHA_CarState.class
 com\speedarena\SpeedArenaApplication.class
 com\speedarena\config\SecurityConfig.class
 com\speedarena\dto\LoginRequest.class
+com\speedarena\repository\LB_GameResultRepository.class
 com\speedarena\repository\UserRepository.class
 com\speedarena\config\JwtService.class
+com\speedarena\controller\LB_GameResultController.class
 com\speedarena\dto\AuthResponse.class
-com\speedarena\config\CorsConfig.class
 com\speedarena\config\JwtAuthFilter.class
 com\speedarena\controller\SHA_GameController.class
 com\speedarena\controller\TestController.class
+com\speedarena\model\LB_GameResult.class
 com\speedarena\model\User.class
+com\speedarena\service\LB_GameResultService.class
+com\speedarena\service\GameResultService.class

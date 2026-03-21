@@ -55,14 +55,29 @@ public class SHA_CarState {
      */
     private long timestamp;
 
+    /**
+     * Server timestamp of when the player finished the race.
+     * Used for ranking players correctly according to finish time.
+     */
+    private long finishTime;
+
+    /**
+     * Total race duration in seconds (e.g. 32.25)
+     */
+    private double totalTime;
+
     // ─── Constructors ─────────────────────────────────────────────────────────
 
     /** Default constructor (required for JSON deserialization by Spring) */
     public SHA_CarState() {
         this.timestamp = System.currentTimeMillis();
+        this.finishTime = 0;
+        this.totalTime = 0;
         this.status = "WAITING";
         this.lapsCompleted = 0;
     }
+
+
 
     /**
      * Convenience constructor for quick test data.
@@ -111,6 +126,12 @@ public class SHA_CarState {
     public long getTimestamp() { return timestamp; }
     public void setTimestamp(long timestamp) { this.timestamp = timestamp; }
 
+    public long getFinishTime() { return finishTime; }
+    public void setFinishTime(long finishTime) { this.finishTime = finishTime; }
+
+    public double getTotalTime() { return totalTime; }
+    public void setTotalTime(double totalTime) { this.totalTime = totalTime; }
+
     @Override
     public String toString() {
         return "SHA_CarState{" +
@@ -120,6 +141,10 @@ public class SHA_CarState {
                 ", angle=" + angle + ", speed=" + speed +
                 ", laps=" + lapsCompleted +
                 ", status='" + status + '\'' +
+                ", finishTime=" + finishTime +
+                ", totalTime=" + totalTime +
                 '}';
     }
+
+
 }

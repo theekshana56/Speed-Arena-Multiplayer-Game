@@ -3,9 +3,19 @@ import { useNavigate } from "react-router-dom";
 import SockJS from "sockjs-client";
 import { Client } from "@stomp/stompjs";
 
-const WS_URL = "http://localhost:8080/ws-racing";
-const CAR_COLORS = { red: "#ef4444", blue: "#3b82f6", green: "#22c55e", yellow: "#facc15" };
-const CAR_LABELS  = { red: "VIPER", blue: "PHANTOM", green: "RAPTOR", yellow: "BLAZE" };
+const WS_URL = "http://127.0.0.1:8080/ws-racing";
+const CAR_COLORS = { 
+  red: "#ff3333", 
+  blue: "#00a2ff", 
+  green: "#00e87a", 
+  yellow: "#ffd520" 
+};
+const CAR_LABELS  = { 
+  red: "VIPER", 
+  blue: "PHANTOM", 
+  green: "RAPTOR", 
+  yellow: "BLAZE" 
+};
 
 export default function RoomLobbyPage() {
   const navigate = useNavigate();
@@ -109,7 +119,7 @@ export default function RoomLobbyPage() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const myColor = CAR_COLORS[carColor] || "#ef4444";
+  const myColor = CAR_COLORS[carColor] || "#ff3333";
   const canStart = players.length >= 2;
 
   return (
@@ -119,7 +129,7 @@ export default function RoomLobbyPage() {
       {/* ── Countdown overlay ── */}
       {countdown !== null && (
         <div style={s.overlay}>
-          <div style={{ ...s.countNum, color: countdown === 0 ? "#22c55e" : "#facc15" }}>
+          <div style={{ ...s.countNum, color: countdown === 0 ? "#00e87a" : "#ffd520", textShadow: `0 0 50px ${countdown === 0 ? "#00e87a" : "#ffd520"}80` }}>
             {countdown === 0 ? "GO!" : countdown}
           </div>
         </div>
@@ -130,10 +140,13 @@ export default function RoomLobbyPage() {
         <button onClick={() => { clientRef.current?.deactivate(); navigate("/home"); }} style={s.backBtn}>
           ← BACK
         </button>
-        <span style={s.logo}>⚡ SPEED ARENA</span>
-        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-          <span style={{ width: "8px", height: "8px", borderRadius: "50%", background: connected ? "#22c55e" : "#ef4444", display: "inline-block" }} />
-          <span style={{ fontSize: "10px", color: connected ? "#22c55e" : "#6b7280", letterSpacing: "1px" }}>
+        <div style={{ textAlign: "center" }}>
+            <span style={s.logo}>⚡ SPEED ARENA</span>
+            <div style={{ fontSize: "8px", letterSpacing: "4px", color: "rgba(255,255,255,0.2)", marginTop: "2px", fontFamily: "'Orbitron', sans-serif" }}>MULTIPLAYER LOBBY</div>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+          <span style={{ width: "8px", height: "8px", borderRadius: "50%", background: connected ? "#00e87a" : "#ff3333", display: "inline-block", boxShadow: `0 0 10px ${connected ? "#00e87a" : "#ff3333"}` }} />
+          <span style={{ fontSize: "10px", color: connected ? "#00e87a" : "rgba(255,255,255,0.3)", letterSpacing: "1px", fontWeight: "bold", fontFamily: "'Orbitron', sans-serif" }}>
             {connected ? "CONNECTED" : "CONNECTING..."}
           </span>
         </div>
@@ -146,52 +159,53 @@ export default function RoomLobbyPage() {
         <div style={s.leftCol}>
 
           {/* Room code card */}
-          <div style={{ ...s.card, borderColor: `${myColor}50`, boxShadow: `0 0 30px ${myColor}12` }}>
-            <div style={s.cardLabel}>ROOM CODE</div>
-            <div style={{ ...s.roomCode, color: myColor }}>{roomId}</div>
-            <button onClick={copyCode} style={{ ...s.copyBtn, borderColor: myColor, color: copied ? "#22c55e" : myColor }}>
-              {copied ? "✓ COPIED!" : "📋 COPY & SHARE"}
+          <div style={{ ...s.card, borderColor: `${myColor}40`, boxShadow: `0 0 40px ${myColor}15`, background: "rgba(255,255,255,0.03)" }}>
+            <div style={s.cardLabel}>MISSION CODE</div>
+            <div style={{ ...s.roomCode, color: myColor, textShadow: `0 0 20px ${myColor}40` }}>{roomId}</div>
+            <button onClick={copyCode} style={{ ...s.copyBtn, borderColor: `${myColor}60`, color: copied ? "#00e87a" : myColor, background: copied ? "rgba(0, 232, 122, 0.1)" : "transparent" }}>
+              {copied ? "✓ CODE COPIED!" : "📋 COPY MISSION CODE"}
             </button>
             <p style={s.hint}>
-              Send this code to friends → they open a new tab → enter code on Game Home → Join Room
+              Share this code with other drivers to initialize a synchronized racing session. 
             </p>
           </div>
 
           {/* Status */}
-          <div style={s.card}>
-            <div style={s.cardLabel}>STATUS</div>
-            <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "12px" }}>
-              <span style={{ width: "8px", height: "8px", borderRadius: "50%", background: "#22c55e", display: "inline-block", animation: "pulse 1.5s ease-in-out infinite" }} />
-              <span style={{ fontSize: "11px", color: "#6b7280", letterSpacing: "1px" }}>
-                {players.length < 4 ? `WAITING FOR PLAYERS${dots}` : "LOBBY FULL"}
+          <div style={{ ...s.card, background: "rgba(255,255,255,0.03)" }}>
+            <div style={s.cardLabel}>OPERATIONAL STATUS</div>
+            <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "16px" }}>
+              <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#00e87a", display: "inline-block", animation: "pulse 1.5s ease-in-out infinite", boxShadow: "0 0 8px #00e87a" }} />
+              <span style={{ fontSize: "11px", color: "rgba(255,255,255,0.4)", letterSpacing: "2px", fontWeight: "bold", fontFamily: "'Orbitron', sans-serif" }}>
+                {players.length < 4 ? `WAITING FOR DRIVERS${dots}` : "LOBBY CAPACITY REACHED"}
               </span>
             </div>
 
             {/* Player slots bar */}
-            <div style={{ display: "flex", gap: "6px", marginBottom: "8px" }}>
+            <div style={{ display: "flex", gap: "8px", marginBottom: "12px" }}>
               {[...Array(4)].map((_, i) => (
                 <div key={i} style={{
                   flex: 1, height: "6px", borderRadius: "3px",
                   background: i < players.length
                     ? (CAR_COLORS[players[i]?.carColor] || myColor)
-                    : "#1f2937",
-                  transition: "background 0.4s ease",
+                    : "rgba(255,255,255,0.05)",
+                  transition: "all 0.4s ease",
+                  boxShadow: i < players.length ? `0 0 8px ${CAR_COLORS[players[i]?.carColor] || myColor}60` : "none"
                 }} />
               ))}
             </div>
-            <div style={{ fontSize: "11px", color: "#4b5563" }}>
-              <span style={{ color: myColor, fontSize: "22px", fontWeight: "900" }}>{players.length}</span>
-              <span style={{ color: "#374151" }}>/4 players joined</span>
+            <div style={{ fontSize: "11px", color: "rgba(255,255,255,0.3)", fontFamily: "'Orbitron', sans-serif" }}>
+              <span style={{ color: myColor, fontSize: "24px", fontWeight: "900" }}>{players.length}</span>
+              <span style={{ color: "rgba(255,255,255,0.2)", marginLeft: "8px", letterSpacing: "2px" }}>/ 4 DRIVERS DEPLOYED</span>
             </div>
           </div>
 
           {/* Race details */}
-          <div style={s.card}>
-            <div style={s.cardLabel}>RACE DETAILS</div>
-            {[["ROOM", roomId], ["TRACK", "SPEED OVAL"], ["LAPS", "3"], ["SYNC", "WEBSOCKET"]].map(([k, v]) => (
+          <div style={{ ...s.card, background: "rgba(255,255,255,0.03)" }}>
+            <div style={s.cardLabel}>SESSION SPECIFICATIONS</div>
+            {[["PROTOCOL", "WEBSOCKET-SECURE"], ["ENVIRONMENT", "OVAL CIRCUIT"], ["OBJECTIVE", "3 LAPS"], ["SYNC", "REAL-TIME"]].map(([k, v]) => (
               <div key={k} style={s.detailRow}>
-                <span style={{ color: "#4b5563" }}>{k}</span>
-                <span style={{ color: k === "SYNC" ? "#22c55e" : "#9ca3af" }}>{v}{k === "SYNC" ? " ●" : ""}</span>
+                <span style={{ color: "rgba(255,255,255,0.3)", letterSpacing: "2px" }}>{k}</span>
+                <span style={{ color: k === "SYNC" ? "#ff3333" : "rgba(255,255,255,0.6)", fontWeight: "bold" }}>{v}</span>
               </div>
             ))}
           </div>
@@ -200,65 +214,67 @@ export default function RoomLobbyPage() {
         {/* RIGHT col — player list */}
         <div style={s.rightCol}>
           <div style={s.sectionLabel}>
-            PLAYERS IN LOBBY
-            <span style={{ color: "#374151", marginLeft: "8px" }}>({players.length}/4)</span>
+            ACTIVE PERSONNEL
+            <span style={{ color: "rgba(255,255,255,0.2)", marginLeft: "12px" }}>({players.length} / 4)</span>
           </div>
 
           {/* 4 player slots */}
-          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
             {[...Array(4)].map((_, i) => {
               const p = players[i];
               const isMe = p?.playerId === playerId;
-              const pColor = CAR_COLORS[p?.carColor] || "#374151";
+              const pColor = CAR_COLORS[p?.carColor] || "rgba(255,255,255,0.05)";
 
               return (
                 <div key={i} style={{
                   ...s.slot,
-                  borderColor: p ? `${pColor}40` : "#0f172a",
-                  background: p ? "#0a0a1a" : "#060610",
-                  opacity: p ? 1 : 0.4,
+                  borderColor: p ? `${pColor}40` : "rgba(255,255,255,0.05)",
+                  background: p ? "rgba(255, 255, 255, 0.03)" : "rgba(255, 255, 255, 0.01)",
+                  backdropFilter: p ? "blur(10px)" : "none",
+                  opacity: p ? 1 : 0.5,
+                  transform: p ? "translateX(0)" : "scale(0.98)",
                 }}>
                   {p ? (
                     <>
                       {/* Car color bar */}
-                      <div style={{ width: "4px", alignSelf: "stretch", background: pColor, borderRadius: "2px", flexShrink: 0 }} />
+                      <div style={{ width: "4px", alignSelf: "stretch", background: pColor, borderRadius: "2px", flexShrink: 0, boxShadow: `0 0 10px ${pColor}` }} />
 
                       {/* Car mini */}
-                      <div style={{ width: "36px", height: "18px", background: pColor, borderRadius: "4px", boxShadow: `0 0 10px ${pColor}60`, flexShrink: 0 }} />
+                      <div style={{ width: "42px", height: "20px", background: pColor, borderRadius: "4px", boxShadow: `0 0 15px ${pColor}80`, flexShrink: 0 }} />
 
                       {/* Info */}
                       <div style={{ flex: 1 }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                          <span style={{ fontSize: "13px", fontWeight: "bold", color: isMe ? pColor : "#e5e7eb" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                          <span style={{ fontSize: "14px", fontWeight: "900", color: isMe ? pColor : "#fff", letterSpacing: "2px", fontFamily: "'Orbitron', sans-serif" }}>
                             {p.playerId.toUpperCase()}
                           </span>
                           {isMe && (
-                            <span style={{ fontSize: "8px", border: `1px solid ${pColor}`, color: pColor, borderRadius: "3px", padding: "1px 5px", letterSpacing: "1px" }}>
+                            <span style={{ fontSize: "8px", border: `1px solid ${pColor}`, color: pColor, borderRadius: "4px", padding: "2px 6px", letterSpacing: "2px", fontWeight: "bold" }}>
                               YOU
                             </span>
                           )}
                           {i === 0 && (
-                            <span style={{ fontSize: "8px", background: "#facc1520", border: "1px solid #facc1440", color: "#facc14", borderRadius: "3px", padding: "1px 5px", letterSpacing: "1px" }}>
+                            <span style={{ fontSize: "8px", background: "rgba(255,213,32,0.1)", border: "1px solid rgba(255,213,32,0.3)", color: "#ffd520", borderRadius: "4px", padding: "2px 6px", letterSpacing: "2px", fontWeight: "bold" }}>
                               HOST
                             </span>
                           )}
                         </div>
-                        <span style={{ fontSize: "10px", color: "#4b5563", letterSpacing: "1px" }}>
-                          {CAR_LABELS[p.carColor] || "—"}
+                        <span style={{ fontSize: "10px", color: "rgba(255,255,255,0.3)", letterSpacing: "2px", fontFamily: "'Orbitron', sans-serif", marginTop: "2px", display: "block" }}>
+                          UNIT: {CAR_LABELS[p.carColor] || "—"}
                         </span>
                       </div>
 
                       {/* Ready badge */}
-                      <div style={{ fontSize: "9px", color: "#22c55e", background: "#052e16", border: "1px solid #22c55e30", borderRadius: "4px", padding: "4px 8px", letterSpacing: "1px" }}>
+                      <div style={{ fontSize: "9px", color: "#00e87a", background: "rgba(0, 232, 122, 0.1)", border: "1px solid rgba(0, 232, 122, 0.2)", borderRadius: "6px", padding: "6px 10px", letterSpacing: "2px", fontWeight: "bold", fontFamily: "'Orbitron', sans-serif" }}>
                         ✓ READY
                       </div>
                     </>
                   ) : (
                     <>
-                      <div style={{ width: "4px", alignSelf: "stretch", background: "#1f2937", borderRadius: "2px" }} />
-                      <div style={{ width: "36px", height: "18px", border: "1px dashed #1f2937", borderRadius: "4px" }} />
-                      <span style={{ fontSize: "11px", color: "#1f2937", letterSpacing: "2px" }}>
-                        WAITING{dots}
+                      <div style={{ width: "4px", alignSelf: "stretch", background: "rgba(255,255,255,0.05)", borderRadius: "2px" }} />
+                      <div style={{ width: "42px", height: "20px", border: "1px dashed rgba(255,255,255,0.1)", borderRadius: "4px" }} />
+                      <span style={{ fontSize: "11px", color: "rgba(255,255,255,0.1)", letterSpacing: "3px", fontFamily: "'Orbitron', sans-serif" }}>
+                        WAITING FOR SIGNAL{dots}
                       </span>
                     </>
                   )}
@@ -272,32 +288,32 @@ export default function RoomLobbyPage() {
             <button onClick={startRace} disabled={!canStart}
               style={{
                 ...s.startBtn,
-                background: canStart ? myColor : "#1f2937",
-                color: canStart ? "#000" : "#374151",
+                background: canStart ? myColor : "rgba(255,255,255,0.05)",
+                color: canStart ? "#000" : "rgba(255,255,255,0.2)",
                 cursor: canStart ? "pointer" : "not-allowed",
-                boxShadow: canStart ? `0 0 30px ${myColor}50` : "none",
-                marginTop: "16px",
+                boxShadow: canStart ? `0 0 40px ${myColor}40` : "none",
+                marginTop: "20px",
               }}>
-              {canStart ? "🏁 START RACE" : `⏳ NEED ${2 - players.length > 0 ? 2 - players.length : 0} MORE PLAYER${players.length < 1 ? "S" : ""}...`}
+              {canStart ? "🏁 INITIALIZE RACE" : `⏳ AWAITING ${2 - players.length > 0 ? 2 - players.length : 0} MORE DRIVER${players.length < 1 ? "S" : ""}...`}
             </button>
           ) : (
-            <div style={{ ...s.waitingMsg, marginTop: "16px" }}>
+            <div style={{ ...s.waitingMsg, marginTop: "20px" }}>
               <span style={{ animation: "pulse 1.5s ease-in-out infinite", display: "inline-block" }}>⏳</span>
-              &nbsp; WAITING FOR HOST TO START THE RACE...
+              &nbsp; AWAITING HOST COMMAND TO START...
             </div>
           )}
 
           {/* How to join instructions */}
           <div style={s.instructions}>
-            <div style={{ fontSize: "10px", color: "#374151", letterSpacing: "2px", marginBottom: "8px" }}>HOW TO INVITE</div>
+            <div style={{ fontSize: "10px", color: "rgba(255,255,255,0.2)", letterSpacing: "3px", marginBottom: "12px", fontFamily: "'Orbitron', sans-serif" }}>SYNCHRONIZATION GUIDE</div>
             {[
-              "1. Copy the room code above",
-              "2. Open a new browser tab",
-              `3. Go to localhost:5173/home`,
-              "4. Enter the code → Join Room",
-              "5. Up to 4 players can join",
+              "1. REPLICATE THE MISSION CODE ABOVE",
+              "2. INVITE OTHER DRIVERS TO THE TERMINAL",
+              `3. NAVIGATE TO: SPEED-ARENA.GAME/HOME`,
+              "4. INPUT CODE → INITIALIZE JOIN",
+              "5. LOBBY SUPPORTS UP TO 4 SIMULTANEOUS LINKS",
             ].map((step, i) => (
-              <div key={i} style={{ fontSize: "10px", color: "#374151", marginBottom: "4px", letterSpacing: "1px" }}>
+              <div key={i} style={{ fontSize: "9px", color: "rgba(255,255,255,0.3)", marginBottom: "6px", letterSpacing: "1px", fontFamily: "'Inter', sans-serif" }}>
                 {step}
               </div>
             ))}
@@ -306,33 +322,33 @@ export default function RoomLobbyPage() {
       </div>
 
       <style>{`
-        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
-        @keyframes countIn { 0%{transform:scale(2.5);opacity:0} 100%{transform:scale(1);opacity:1} }
+        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+        @keyframes countIn { 0%{transform:scale(3);opacity:0;filter:blur(20px)} 100%{transform:scale(1);opacity:1;filter:blur(0)} }
       `}</style>
     </div>
   );
 }
 
 const s = {
-  screen: { background: "#050510", minHeight: "100vh", color: "#fff", fontFamily: "'Courier New', monospace", position: "relative", overflow: "hidden" },
-  grid: { position: "fixed", inset: 0, backgroundImage: "linear-gradient(rgba(239,68,68,0.03) 1px, transparent 1px),linear-gradient(90deg,rgba(239,68,68,0.03) 1px,transparent 1px)", backgroundSize: "60px 60px", pointerEvents: "none" },
-  overlay: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.92)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center" },
-  countNum: { fontSize: "180px", fontWeight: "900", animation: "countIn 0.5s cubic-bezier(0.34,1.56,0.64,1)" },
-  header: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 40px", borderBottom: "1px solid #0f172a" },
-  backBtn: { background: "transparent", border: "1px solid #1f2937", color: "#6b7280", padding: "8px 14px", borderRadius: "4px", cursor: "pointer", fontSize: "10px", letterSpacing: "2px", fontFamily: "'Courier New', monospace" },
-  logo: { color: "#ef4444", fontSize: "16px", fontWeight: "bold", letterSpacing: "3px" },
-  main: { display: "flex", gap: "30px", padding: "28px 40px", maxWidth: "1000px", margin: "0 auto", flexWrap: "wrap" },
-  leftCol: { flex: "1", minWidth: "260px", display: "flex", flexDirection: "column", gap: "14px" },
-  rightCol: { flex: "1.3", minWidth: "300px", display: "flex", flexDirection: "column", gap: "12px" },
-  card: { background: "#0a0a1a", border: "1px solid #0f172a", borderRadius: "10px", padding: "18px" },
-  cardLabel: { fontSize: "9px", color: "#374151", letterSpacing: "3px", marginBottom: "12px" },
-  roomCode: { fontSize: "44px", fontWeight: "900", letterSpacing: "10px", textAlign: "center", marginBottom: "14px" },
-  copyBtn: { width: "100%", background: "transparent", border: "1px solid", borderRadius: "6px", padding: "10px", cursor: "pointer", fontSize: "11px", letterSpacing: "2px", fontFamily: "'Courier New', monospace", fontWeight: "bold", transition: "all 0.2s", marginBottom: "10px" },
-  hint: { fontSize: "10px", color: "#374151", letterSpacing: "0.5px", lineHeight: "1.6", margin: 0 },
-  detailRow: { display: "flex", justifyContent: "space-between", fontSize: "11px", letterSpacing: "1px", marginBottom: "8px" },
-  sectionLabel: { fontSize: "10px", color: "#4b5563", letterSpacing: "3px" },
-  slot: { display: "flex", alignItems: "center", gap: "12px", border: "1px solid", borderRadius: "8px", padding: "14px 16px", minHeight: "58px", transition: "all 0.3s ease" },
-  startBtn: { width: "100%", padding: "16px", border: "none", borderRadius: "8px", fontSize: "14px", fontWeight: "900", letterSpacing: "3px", fontFamily: "'Courier New', monospace", transition: "all 0.2s" },
-  waitingMsg: { textAlign: "center", fontSize: "10px", color: "#374151", letterSpacing: "2px", padding: "16px", border: "1px solid #0f172a", borderRadius: "8px" },
-  instructions: { background: "#070710", border: "1px solid #0f172a", borderRadius: "8px", padding: "14px", marginTop: "4px" },
+  screen: { background: "#03030e", minHeight: "100vh", color: "#fff", fontFamily: "'Inter', sans-serif", position: "relative", overflow: "hidden" },
+  grid: { position: "fixed", inset: 0, backgroundImage: "linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px)", backgroundSize: "60px 60px", pointerEvents: "none" },
+  overlay: { position: "fixed", inset: 0, background: "rgba(3,3,14,0.95)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(20px)" },
+  countNum: { fontSize: "200px", fontWeight: "900", animation: "countIn 0.5s cubic-bezier(0.34,1.56,0.64,1)", fontFamily: "'Orbitron', sans-serif" },
+  header: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "24px 48px", borderBottom: "1px solid rgba(255,255,255,0.05)", background: "rgba(0,0,0,0.2)", backdropFilter: "blur(10px)" },
+  backBtn: { background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.4)", padding: "10px 18px", borderRadius: "6px", cursor: "pointer", fontSize: "10px", letterSpacing: "2px", fontFamily: "'Orbitron', sans-serif", transition: "all 0.3s" },
+  logo: { color: "#ff3333", fontSize: "18px", fontWeight: "900", letterSpacing: "5px", fontFamily: "'Orbitron', sans-serif" },
+  main: { display: "flex", gap: "40px", padding: "40px 48px", maxWidth: "1100px", margin: "0 auto", flexWrap: "wrap" },
+  leftCol: { flex: "1", minWidth: "300px", display: "flex", flexDirection: "column", gap: "20px" },
+  rightCol: { flex: "1.3", minWidth: "340px", display: "flex", flexDirection: "column", gap: "16px" },
+  card: { background: "rgba(255, 255, 255, 0.03)", backdropFilter: "blur(12px)", border: "1px solid rgba(255,255,255,0.05)", borderRadius: "16px", padding: "24px" },
+  cardLabel: { fontSize: "10px", color: "rgba(255,255,255,0.3)", letterSpacing: "4px", marginBottom: "16px", fontFamily: "'Orbitron', sans-serif" },
+  roomCode: { fontSize: "52px", fontWeight: "900", letterSpacing: "12px", textAlign: "center", marginBottom: "20px", fontFamily: "'Orbitron', sans-serif" },
+  copyBtn: { width: "100%", border: "1px solid", borderRadius: "10px", padding: "14px", cursor: "pointer", fontSize: "11px", letterSpacing: "3px", fontFamily: "'Orbitron', sans-serif", fontWeight: "bold", transition: "all 0.3s", marginBottom: "12px" },
+  hint: { fontSize: "11px", color: "rgba(255,255,255,0.3)", letterSpacing: "1px", lineHeight: "1.6", margin: 0, fontFamily: "'Inter', sans-serif" },
+  detailRow: { display: "flex", justifyContent: "space-between", fontSize: "11px", letterSpacing: "1px", marginBottom: "10px", fontFamily: "'Orbitron', sans-serif", borderBottom: "1px solid rgba(255,255,255,0.02)", paddingBottom: "8px" },
+  sectionLabel: { fontSize: "11px", color: "rgba(255,255,255,0.3)", letterSpacing: "4px", fontFamily: "'Orbitron', sans-serif" },
+  slot: { display: "flex", alignItems: "center", gap: "16px", border: "1px solid", borderRadius: "16px", padding: "18px 24px", minHeight: "70px", transition: "all 0.4s cubic-bezier(0.4, 0, 0.2, 1)" },
+  startBtn: { width: "100%", padding: "20px", border: "none", borderRadius: "12px", fontSize: "15px", fontWeight: "900", letterSpacing: "4px", fontFamily: "'Orbitron', sans-serif", transition: "all 0.3s", cursor: "pointer" },
+  waitingMsg: { textAlign: "center", fontSize: "11px", color: "rgba(255,255,255,0.4)", letterSpacing: "3px", padding: "20px", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "16px", background: "rgba(255,255,255,0.02)", fontFamily: "'Orbitron', sans-serif" },
+  instructions: { background: "rgba(255, 255, 255, 0.02)", border: "1px solid rgba(255,255,255,0.05)", borderRadius: "16px", padding: "24px", marginTop: "8px" },
 };
