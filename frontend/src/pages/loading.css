@@ -1,0 +1,300 @@
+@import url("https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;800&display=swap");
+
+.loading-screen {
+  position: relative;
+  width: 100%;
+  height: 100vh;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at center, rgba(0, 180, 255, 0.12) 0%, rgba(0, 0, 0, 0) 35%),
+    linear-gradient(180deg, #02040a 0%, #050b14 45%, #02040a 100%);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-family: "Orbitron", sans-serif;
+  color: white;
+}
+
+.bg-grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(0, 195, 255, 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 195, 255, 0.08) 1px, transparent 1px);
+  background-size: 40px 40px;
+  transform: perspective(700px) rotateX(70deg) scale(1.6);
+  transform-origin: center bottom;
+  opacity: 0.35;
+  animation: gridMove 8s linear infinite;
+}
+
+.bg-glow {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(60px);
+  opacity: 0.28;
+}
+
+.bg-glow-1 {
+  width: 280px;
+  height: 280px;
+  background: #00c3ff;
+  top: 12%;
+  left: 12%;
+}
+
+.bg-glow-2 {
+  width: 240px;
+  height: 240px;
+  background: #1a7bff;
+  bottom: 10%;
+  right: 14%;
+}
+
+.loading-stage,
+.title-stage {
+  position: relative;
+  z-index: 2;
+  text-align: center;
+  width: min(90%, 850px);
+}
+
+.loading-label {
+  color: #aeeaff;
+  letter-spacing: 4px;
+  font-size: 1rem;
+  margin-bottom: 34px;
+  text-shadow: 0 0 10px rgba(0, 195, 255, 0.7);
+}
+
+.race-lane {
+  position: relative;
+  width: 100%;
+  height: 180px;
+  border-top: 2px solid rgba(0, 195, 255, 0.35);
+  border-bottom: 2px solid rgba(0, 195, 255, 0.18);
+  background: linear-gradient(
+    180deg,
+    rgba(0, 195, 255, 0.06) 0%,
+    rgba(255, 255, 255, 0.02) 50%,
+    rgba(0, 195, 255, 0.06) 100%
+  );
+  box-shadow:
+    0 0 30px rgba(0, 195, 255, 0.08) inset,
+    0 0 18px rgba(0, 195, 255, 0.08);
+  overflow: hidden;
+  border-radius: 18px;
+}
+
+.lane-line {
+  position: absolute;
+  top: 50%;
+  height: 6px;
+  width: 100%;
+  transform: translateY(-50%);
+  background-image: repeating-linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.92) 0 42px,
+    transparent 42px 78px
+  );
+  opacity: 0.85;
+  animation: laneMove 0.7s linear infinite;
+}
+
+.lane-line-1 {
+  top: 32%;
+  opacity: 0.35;
+}
+
+.lane-line-2 {
+  top: 50%;
+}
+
+.lane-line-3 {
+  top: 68%;
+  opacity: 0.35;
+}
+
+.car-wrapper {
+  position: absolute;
+  left: -120px;
+  bottom: 56px;
+  animation: driveAcross 2.1s ease-in-out forwards;
+}
+
+.car-body {
+  position: relative;
+  width: 120px;
+  height: 42px;
+  background: linear-gradient(90deg, #00c3ff, #1976ff);
+  border-radius: 14px 22px 10px 10px;
+  box-shadow:
+    0 0 16px rgba(0, 195, 255, 0.9),
+    0 0 36px rgba(25, 118, 255, 0.35);
+}
+
+.car-top {
+  position: absolute;
+  top: -16px;
+  left: 28px;
+  width: 48px;
+  height: 20px;
+  background: linear-gradient(90deg, #8de7ff, #58a6ff);
+  border-radius: 12px 12px 4px 4px;
+  box-shadow: 0 0 10px rgba(141, 231, 255, 0.5);
+}
+
+.wheel {
+  position: absolute;
+  bottom: -9px;
+  width: 18px;
+  height: 18px;
+  background: #0a0a0a;
+  border: 3px solid #91e8ff;
+  border-radius: 50%;
+  animation: wheelSpin 0.25s linear infinite;
+}
+
+.wheel-front {
+  right: 18px;
+}
+
+.wheel-back {
+  left: 16px;
+}
+
+.car-light {
+  position: absolute;
+  right: -18px;
+  top: 12px;
+  width: 18px;
+  height: 8px;
+  background: linear-gradient(90deg, rgba(130, 220, 255, 0.95), rgba(130, 220, 255, 0));
+  filter: blur(2px);
+}
+
+.title-stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.title-glow-ring {
+  width: 180px;
+  height: 180px;
+  border: 2px solid rgba(0, 195, 255, 0.4);
+  border-radius: 50%;
+  box-shadow:
+    0 0 25px rgba(0, 195, 255, 0.3),
+    inset 0 0 25px rgba(0, 195, 255, 0.18);
+  margin-bottom: 28px;
+  animation: pulseRing 1.8s ease-in-out infinite;
+}
+
+.game-title {
+  margin: 0;
+  font-size: clamp(2.2rem, 8vw, 5rem);
+  font-weight: 800;
+  letter-spacing: 8px;
+  text-transform: uppercase;
+  color: #dff7ff;
+  text-shadow:
+    0 0 10px rgba(0, 195, 255, 0.9),
+    0 0 28px rgba(0, 195, 255, 0.5),
+    0 0 60px rgba(25, 118, 255, 0.28);
+}
+
+.title-letter {
+  display: inline-block;
+  opacity: 0;
+  transform: translateY(18px) scale(0.8);
+  animation: revealLetter 0.35s ease forwards;
+}
+
+.sub-title {
+  margin-top: 18px;
+  letter-spacing: 4px;
+  font-size: 0.9rem;
+  color: #95defc;
+  opacity: 0;
+  animation: fadeUp 0.8s ease forwards;
+  animation-delay: 1.9s;
+}
+
+@keyframes driveAcross {
+  0% {
+    left: -140px;
+    transform: translateY(0) scale(0.95);
+  }
+  20% {
+    transform: translateY(-2px) scale(1);
+  }
+  80% {
+    transform: translateY(2px) scale(1);
+  }
+  100% {
+    left: calc(100% - 160px);
+    transform: translateY(0) scale(0.98);
+  }
+}
+
+@keyframes laneMove {
+  from {
+    background-position-x: 0;
+  }
+  to {
+    background-position-x: -78px;
+  }
+}
+
+@keyframes wheelSpin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes revealLetter {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulseRing {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.85;
+  }
+  50% {
+    transform: scale(1.08);
+    opacity: 1;
+  }
+}
+
+@keyframes gridMove {
+  from {
+    transform: perspective(700px) rotateX(70deg) translateY(0) scale(1.6);
+  }
+  to {
+    transform: perspective(700px) rotateX(70deg) translateY(30px) scale(1.6);
+  }
+}
