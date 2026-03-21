@@ -12,7 +12,7 @@ export default function LoadingPage() {
     }, 2200);
 
     const navTimer = setTimeout(() => {
-      navigate("/lobby");
+      navigate("/home");
     }, 5200);
 
     return () => {

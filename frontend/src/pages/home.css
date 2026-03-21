@@ -1,0 +1,464 @@
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&display=swap');
+
+:root {
+  --neon-cyan: #00f5ff;
+  --neon-orange: #ff5a1f;
+  --neon-yellow: #ffd600;
+  --dark-bg: #07080a;
+  --panel-bg: rgba(12, 14, 18, 0.85);
+  --chrome: #c8d0dc;
+  --text-white: #f0f4ff;
+  --scanline-color: rgba(0, 245, 255, 0.03);
+  --speed-orange: rgba(255, 90, 31, 0.15);
+  --speed-cyan: rgba(0, 245, 255, 0.12);
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* ─── BASE ─── */
+.home-container {
+  min-height: 100vh;
+  background-color: var(--dark-bg);
+  background-image:
+    radial-gradient(ellipse 70% 50% at 15% 25%, var(--speed-cyan) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 40% at 85% 75%, var(--speed-orange) 0%, transparent 55%),
+    radial-gradient(ellipse 40% 30% at 50% 50%, rgba(255, 214, 0, 0.04) 0%, transparent 50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-white);
+  font-family: 'Rajdhani', 'Segoe UI', sans-serif;
+  overflow: hidden;
+  position: relative;
+  cursor: default;
+}
+
+/* ─── SCANLINES ─── */
+.home-container::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image:
+    repeating-linear-gradient(
+      0deg,
+      var(--scanline-color) 0px,
+      var(--scanline-color) 1px,
+      transparent 1px,
+      transparent 3px
+    );
+  pointer-events: none;
+  z-index: 2;
+  animation: scanScroll 8s linear infinite;
+}
+
+/* ─── SPEED LINES BG ─── */
+.home-container::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image:
+    repeating-linear-gradient(
+      88deg,
+      transparent 0%,
+      transparent 3%,
+      rgba(0, 245, 255, 0.015) 3%,
+      rgba(0, 245, 255, 0.015) 3.1%,
+      transparent 3.1%
+    ),
+    repeating-linear-gradient(
+      92deg,
+      transparent 0%,
+      transparent 7%,
+      rgba(255, 90, 31, 0.01) 7%,
+      rgba(255, 90, 31, 0.01) 7.2%,
+      transparent 7.2%
+    );
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* ─── CORNER ACCENTS ─── */
+.corner-accent {
+  position: absolute;
+  width: 80px;
+  height: 80px;
+  z-index: 3;
+  opacity: 0.5;
+}
+.corner-accent.tl { top: 24px; left: 24px; border-top: 2px solid var(--neon-cyan); border-left: 2px solid var(--neon-cyan); }
+.corner-accent.tr { top: 24px; right: 24px; border-top: 2px solid var(--neon-cyan); border-right: 2px solid var(--neon-cyan); }
+.corner-accent.bl { bottom: 24px; left: 24px; border-bottom: 2px solid var(--neon-orange); border-left: 2px solid var(--neon-orange); }
+.corner-accent.br { bottom: 24px; right: 24px; border-bottom: 2px solid var(--neon-orange); border-right: 2px solid var(--neon-orange); }
+
+/* ─── HERO ─── */
+.hero-section {
+  z-index: 10;
+  text-align: center;
+  margin-bottom: 1.5rem;
+  animation: fadeInDown 0.8s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+  position: relative;
+}
+
+.game-logo {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: clamp(4.5rem, 12vw, 8rem);
+  letter-spacing: 0.08em;
+  line-height: 0.9;
+  margin-bottom: 0.3rem;
+  color: var(--text-white);
+  text-shadow:
+    0 0 30px rgba(0, 245, 255, 0.7),
+    0 0 60px rgba(0, 245, 255, 0.3),
+    0 0 120px rgba(0, 245, 255, 0.1),
+    4px 4px 0 rgba(255, 90, 31, 0.4);
+  position: relative;
+  display: inline-block;
+}
+
+.game-logo .word-arena {
+  color: var(--neon-orange);
+  text-shadow:
+    0 0 30px rgba(255, 90, 31, 0.8),
+    0 0 60px rgba(255, 90, 31, 0.3),
+    -4px -4px 0 rgba(0, 245, 255, 0.2);
+}
+
+.logo-underline {
+  height: 3px;
+  background: linear-gradient(90deg, transparent, var(--neon-cyan), var(--neon-orange), transparent);
+  margin: 0.4rem auto 0.6rem;
+  width: 80%;
+  animation: pulseBar 2.5s ease-in-out infinite;
+}
+
+.hero-subtitle {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.85rem;
+  color: var(--neon-cyan);
+  letter-spacing: 0.45em;
+  opacity: 0.75;
+  text-transform: uppercase;
+}
+
+.hero-tag {
+  display: inline-block;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.65rem;
+  color: var(--neon-yellow);
+  letter-spacing: 0.25em;
+  border: 1px solid rgba(255, 214, 0, 0.35);
+  padding: 3px 10px;
+  margin-top: 0.6rem;
+  opacity: 0.8;
+  text-transform: uppercase;
+  animation: blink 3s ease-in-out infinite;
+}
+
+/* ─── CAR PREVIEW ─── */
+.car-preview {
+  width: 100%;
+  max-width: 520px;
+  margin: 0.5rem 0 1rem;
+  position: relative;
+  z-index: 5;
+  animation: float 5s ease-in-out infinite;
+}
+
+.car-preview::before {
+  content: "";
+  position: absolute;
+  bottom: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 70%;
+  height: 30px;
+  background: radial-gradient(ellipse, rgba(0, 245, 255, 0.25) 0%, transparent 70%);
+  filter: blur(6px);
+  animation: shadowPulse 5s ease-in-out infinite;
+}
+
+.car-image {
+  width: 100%;
+  height: auto;
+  filter:
+    drop-shadow(0 0 20px rgba(0, 245, 255, 0.5))
+    drop-shadow(0 0 50px rgba(0, 245, 255, 0.15))
+    saturate(1.3) brightness(1.1);
+  display: block;
+}
+
+/* ─── SPEED METER DECORATION ─── */
+.speed-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.65rem;
+  color: rgba(0, 245, 255, 0.55);
+  letter-spacing: 0.1em;
+  margin-bottom: 1.4rem;
+  z-index: 10;
+}
+.speed-bar-track {
+  width: 160px;
+  height: 3px;
+  background: rgba(255,255,255,0.08);
+  border-radius: 2px;
+  overflow: hidden;
+  position: relative;
+}
+.speed-bar-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, var(--neon-orange), var(--neon-cyan));
+  animation: speedFill 2.5s cubic-bezier(0.22, 0.61, 0.36, 1) 0.5s forwards;
+  box-shadow: 0 0 8px var(--neon-cyan);
+}
+
+/* ─── MENU ─── */
+.menu-options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  width: 100%;
+  max-width: 360px;
+  z-index: 10;
+  animation: fadeInUp 0.8s cubic-bezier(0.22, 0.61, 0.36, 1) 0.2s both;
+}
+
+.menu-btn {
+  background: var(--panel-bg);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  padding: 1rem 1.4rem;
+  color: var(--chrome);
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 1rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.22, 0.61, 0.36, 1);
+  border-radius: 2px;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  position: relative;
+  overflow: hidden;
+  text-decoration: none;
+  backdrop-filter: blur(8px);
+  clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 12px 100%, 0 calc(100% - 12px));
+}
+
+/* Left accent bar */
+.menu-btn::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: rgba(0, 245, 255, 0.3);
+  transition: all 0.25s;
+}
+
+/* Shimmer */
+.menu-btn::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -120%;
+  width: 60%;
+  height: 100%;
+  background: linear-gradient(105deg, transparent, rgba(255,255,255,0.07), transparent);
+  transition: 0.5s ease;
+}
+
+.menu-btn:hover {
+  background: rgba(0, 245, 255, 0.07);
+  border-color: rgba(0, 245, 255, 0.4);
+  color: #fff;
+  transform: translateX(5px);
+  box-shadow:
+    inset 0 0 20px rgba(0, 245, 255, 0.05),
+    0 0 20px rgba(0, 245, 255, 0.12);
+}
+
+.menu-btn:hover::before {
+  background: var(--neon-cyan);
+  box-shadow: 0 0 10px var(--neon-cyan);
+}
+
+.menu-btn:hover::after {
+  left: 130%;
+}
+
+.btn-label {
+  flex: 1;
+}
+
+.btn-arrow {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.75rem;
+  color: var(--neon-cyan);
+  opacity: 0;
+  transform: translateX(-8px);
+  transition: all 0.25s;
+}
+.menu-btn:hover .btn-arrow {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.btn-icon {
+  font-size: 1.2rem;
+  width: 28px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+/* Play button special treatment */
+.play-btn {
+  background: linear-gradient(105deg, rgba(255, 90, 31, 0.2) 0%, rgba(255, 90, 31, 0.08) 100%);
+  border-color: rgba(255, 90, 31, 0.5);
+  padding: 1.25rem 1.4rem;
+  font-size: 1.15rem;
+  color: #fff;
+  clip-path: polygon(0 0, calc(100% - 16px) 0, 100% 16px, 100% 100%, 16px 100%, 0 calc(100% - 16px));
+}
+
+.play-btn::before {
+  background: var(--neon-orange);
+}
+
+.play-btn:hover {
+  background: linear-gradient(105deg, rgba(255, 90, 31, 0.35) 0%, rgba(255, 90, 31, 0.15) 100%);
+  border-color: var(--neon-orange);
+  box-shadow:
+    0 0 30px rgba(255, 90, 31, 0.25),
+    inset 0 0 20px rgba(255, 90, 31, 0.08);
+  color: #fff;
+  transform: translateX(5px);
+}
+
+.play-btn .btn-arrow { color: var(--neon-orange); }
+
+/* ─── SECONDARY ACTIONS ─── */
+.secondary-actions {
+  display: flex;
+  gap: 0.8rem;
+  margin-top: 1.8rem;
+  z-index: 10;
+  animation: fadeInUp 0.8s cubic-bezier(0.22, 0.61, 0.36, 1) 0.4s both;
+}
+
+.icon-btn {
+  background: var(--panel-bg);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  width: 46px;
+  height: 46px;
+  display: grid;
+  place-items: center;
+  color: var(--chrome);
+  border-radius: 2px;
+  cursor: pointer;
+  transition: all 0.25s;
+  font-size: 1.1rem;
+  position: relative;
+  clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 0 100%);
+  backdrop-filter: blur(8px);
+}
+
+.icon-btn::after {
+  content: attr(title);
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%) translateY(4px);
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.6rem;
+  letter-spacing: 0.1em;
+  color: var(--neon-cyan);
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: all 0.2s;
+  text-transform: uppercase;
+}
+
+.icon-btn:hover {
+  border-color: rgba(0, 245, 255, 0.4);
+  color: var(--neon-cyan);
+  box-shadow: 0 0 15px rgba(0, 245, 255, 0.15);
+  background: rgba(0, 245, 255, 0.05);
+}
+
+.icon-btn:hover::after {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* ─── VERSION TAG ─── */
+.version-tag {
+  position: absolute;
+  bottom: 18px;
+  right: 24px;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.6rem;
+  color: rgba(255,255,255,0.18);
+  letter-spacing: 0.15em;
+  z-index: 10;
+}
+
+/* ─── ANIMATIONS ─── */
+@keyframes fadeInDown {
+  from { opacity: 0; transform: translateY(-24px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  25% { transform: translateY(-8px) rotate(0.3deg); }
+  75% { transform: translateY(-5px) rotate(-0.3deg); }
+}
+
+@keyframes shadowPulse {
+  0%, 100% { opacity: 0.6; width: 60%; }
+  50% { opacity: 1; width: 75%; }
+}
+
+@keyframes scanScroll {
+  0% { background-position: 0 0; }
+  100% { background-position: 0 60px; }
+}
+
+@keyframes pulseBar {
+  0%, 100% { opacity: 0.7; transform: scaleX(0.95); }
+  50% { opacity: 1; transform: scaleX(1); }
+}
+
+@keyframes blink {
+  0%, 90%, 100% { opacity: 0.8; }
+  95% { opacity: 0.2; }
+}
+
+@keyframes speedFill {
+  from { width: 0%; }
+  to { width: 87%; }
+}
+
+/* ─── RESPONSIVE ─── */
+@media (max-width: 600px) {
+  .corner-accent { width: 50px; height: 50px; }
+  .menu-options { max-width: 92%; }
+  .car-preview { max-width: 90%; }
+}
