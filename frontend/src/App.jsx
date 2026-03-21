@@ -1,7 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import LoadingPage from "./pages/LoadingPage";
-import LoginPage from "./pages/LoginPage";
-import RegisterPage from "./pages/RegisterPage";
 import HomePage from "./pages/HomePage";
 import GameHomePage from "./pages/Gamehomepage";
 import SHA_TestPanel from "./pages/SHA_TestPanel";
@@ -15,8 +13,6 @@ export default function App() {
       <Routes>
         <Route path="/" element={<Navigate to="/loading" replace />} />
         <Route path="/loading" element={<LoadingPage />} />
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/register" element={<RegisterPage />} />
         <Route path="/homepage" element={<HomePage />} />
         <Route path="/leaderboard" element={<LB_LeaderboardPage />} />
         <Route path="/home" element={<GameHomePage />} />
