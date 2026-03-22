@@ -6,6 +6,7 @@ import SHA_TestPanel from "./pages/SHA_TestPanel";
 import RoomLobbyPage from "./pages/Roomlobbypage";
 import RacePage from "./pages/Racepage";
 import LB_LeaderboardPage from "./pages/LB_LeaderboardPage";
+import GamePage from "./pages/GamePage";
 
 export default function App() {
   return (
@@ -19,6 +20,7 @@ export default function App() {
         <Route path="/lobby" element={<RoomLobbyPage />} />
         <Route path="/race" element={<RacePage />} />
         <Route path="/ws-test" element={<SHA_TestPanel />} />
+        <Route path="/game" element={<GamePage />} />
         <Route path="*" element={<Navigate to="/loading" replace />} />
       </Routes>
     </BrowserRouter>
