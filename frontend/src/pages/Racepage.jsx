@@ -4,6 +4,8 @@ import SockJS from "sockjs-client";
 import { Client } from "@stomp/stompjs";
 import { apiFetch } from "../services/apiClient";
 import { tokenService } from "../services/tokenService";
+import GameCanvas from "../components/GameCanvas";
+import { STARTING_POSITIONS } from "../game/carPhysics";
 
 
 const WS_URL = "http://127.0.0.1:8080/ws-racing";
@@ -14,14 +16,7 @@ const CAR_COLORS = {
   yellow: "#ffd520" 
 };
 
-const TRACK_WAYPOINTS = [
-  { x: 340, y: 75 }, { x: 430, y: 85 }, { x: 510, y: 115 },
-  { x: 560, y: 165 }, { x: 575, y: 235 }, { x: 560, y: 305 },
-  { x: 510, y: 355 }, { x: 430, y: 385 }, { x: 340, y: 395 },
-  { x: 250, y: 385 }, { x: 170, y: 355 }, { x: 120, y: 305 },
-  { x: 105, y: 235 }, { x: 120, y: 165 }, { x: 170, y: 115 },
-  { x: 250, y: 85 },
-];
+// Legacy waitpoints removed
 
 export default function RacePage() {
   const navigate = useNavigate();
@@ -38,137 +33,20 @@ export default function RacePage() {
   const [log, setLog] = useState([]);
   const [resultsSent, setResultsSent] = useState(false);
   const [raceStats, setRaceStats] = useState(null);
+  const [countdown, setCountdown] = useState(3);
 
   const startTimeRef = useRef(null);
   const topSpeedRef = useRef(0);
 
   const clientRef = useRef(null);
-  const moveIntervalRef = useRef(null);
-  const waypointRef = useRef(0);
   const lapRef = useRef(0);
-  const canvasRef = useRef(null);
+  const isRacingRef = useRef(false);
+
+  useEffect(() => { isRacingRef.current = isRacing; }, [isRacing]);
 
   const addLog = (msg) => setLog(prev => [...prev.slice(-6), msg]);
 
-  // Draw canvas
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    // Background
-    ctx.fillStyle = "#03030e";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    // Grid
-    ctx.strokeStyle = "rgba(255, 255, 255, 0.02)";
-    ctx.lineWidth = 1;
-    for (let x = 0; x < canvas.width; x += 40) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke(); }
-    for (let y = 0; y < canvas.height; y += 40) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke(); }
-
-    // Outer track
-    ctx.beginPath();
-    ctx.ellipse(340, 235, 255, 170, 0, 0, Math.PI * 2);
-    ctx.fillStyle = "#151520";
-    ctx.fill();
-    ctx.strokeStyle = "rgba(255,255,255,0.08)";
-    ctx.lineWidth = 2;
-    ctx.stroke();
-
-    // Inner grass
-    ctx.beginPath();
-    ctx.ellipse(340, 235, 175, 100, 0, 0, Math.PI * 2);
-    ctx.fillStyle = "#050a10";
-    ctx.fill();
-    ctx.strokeStyle = "rgba(0, 255, 234, 0.1)";
-    ctx.lineWidth = 1;
-    ctx.stroke();
-
-    // Inner text
-    ctx.fillStyle = "rgba(0, 255, 234, 0.2)";
-    ctx.font = "bold 12px 'Orbitron'";
-    ctx.textAlign = "center";
-    ctx.fillText("SPEED ARENA", 340, 231);
-    ctx.font = "8px 'Orbitron'";
-    ctx.fillText("MISSION CONTROL SYNC", 340, 246);
-
-    // Center dashed line
-    ctx.beginPath();
-    ctx.ellipse(340, 235, 215, 135, 0, 0, Math.PI * 2);
-    ctx.strokeStyle = "rgba(255, 213, 32, 0.15)";
-    ctx.lineWidth = 1;
-    ctx.setLineDash([10, 10]);
-    ctx.stroke();
-    ctx.setLineDash([]);
-
-    // Start/finish line
-    for (let i = 0; i < 6; i++) {
-      ctx.fillStyle = i % 2 === 0 ? "#fff" : "#000";
-      ctx.fillRect(322 + i * 6, 62, 6, 18);
-    }
-    ctx.fillStyle = "#ffd520";
-    ctx.font = "bold 10px 'Orbitron'";
-    ctx.textAlign = "center";
-    ctx.fillText("CHECKPOINT 0", 340, 52);
-
-    // Draw all cars
-    Object.values(cars).forEach(car => {
-      const color = CAR_COLORS[car.carColor] || "#ffffff";
-      const angle = (car.angle * Math.PI) / 180;
-      ctx.save();
-      ctx.translate(car.x, car.y);
-      ctx.rotate(angle);
-
-      // Shadow
-      ctx.fillStyle = "rgba(0,0,0,0.5)";
-      ctx.beginPath();
-      ctx.ellipse(3, 4, 15, 8, 0, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Body
-      ctx.fillStyle = color;
-      ctx.beginPath();
-      ctx.roundRect(-14, -8, 28, 16, 5);
-      ctx.fill();
-
-      // Cockpit
-      ctx.fillStyle = "rgba(255,255,255,0.3)";
-      ctx.fillRect(-3, -6, 10, 12);
-
-      // Wheels
-      ctx.fillStyle = "#0a0a0a";
-      [[-16, -9], [10, -9], [-16, 5], [10, 5]].forEach(([wx, wy]) => {
-        ctx.fillRect(wx, wy, 7, 5);
-      });
-
-      // Headlight glow
-      ctx.fillStyle = "#fff";
-      ctx.shadowBlur = 10;
-      ctx.shadowColor = "#ffd520";
-      ctx.beginPath();
-      ctx.arc(15, -4, 2, 0, Math.PI * 2);
-      ctx.arc(15, 4, 2, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.shadowBlur = 0;
-
-      ctx.restore();
-
-      // Name tag
-      ctx.fillStyle = color;
-      ctx.font = `bold 11px 'Orbitron'`;
-      ctx.textAlign = "center";
-      ctx.fillText(car.playerId.substring(0, 10).toUpperCase(), car.x, car.y - 20);
-
-      // Lap indicator
-      if (car.lapsCompleted > 0) {
-        ctx.fillStyle = "#ffd520";
-        ctx.font = "bold 9px 'Orbitron'";
-        ctx.fillText(`L${car.lapsCompleted}`, car.x, car.y - 32);
-      }
-    });
-
-  }, [cars]);
+  // Legacy draw loop removed as it is now handled by GameCanvas
 
   // WebSocket connect on mount
   useEffect(() => {
@@ -180,12 +58,17 @@ export default function RacePage() {
         client.subscribe("/topic/game-state", msg => {
           const car = JSON.parse(msg.body);
           setCars(prev => ({ ...prev, [car.playerId]: car }));
-          if (car.lapsCompleted >= 3 && !winner) setWinner(car.playerId);
+          
+          // Only trigger winner overlay if we are currently racing and a winner is found
+          // (prevents old race data from immediately re-triggering the overlay after clicking RE-DEPLOY)
+          if (car.lapsCompleted >= 3 && !winner && isRacingRef.current) {
+            setWinner(car.playerId);
+          }
         });
-        const start = TRACK_WAYPOINTS[0];
+        const start = STARTING_POSITIONS[0];
         client.publish({
           destination: "/app/player.join",
-          body: JSON.stringify({ playerId, roomId, carColor: carColorKey, x: start.x, y: start.y, angle: 0, speed: 0, status: "WAITING" }),
+          body: JSON.stringify({ playerId, roomId, carColor: carColorKey, x: start.x, y: start.y, angle: start.angle, speed: 0, status: "WAITING" }),
         });
       },
       onDisconnect: () => { setConnected(false); addLog("🔌 Link severed"); },
@@ -200,58 +83,26 @@ export default function RacePage() {
     if (isRacing) return;
     setIsRacing(true);
     startTimeRef.current = Date.now();
-    topSpeedRef.current = 0;
     setResultsSent(false);
     setRaceStats(null);
+    setCountdown(0);
     addLog("🏁 Mission initialized!");
-
-
-    moveIntervalRef.current = setInterval(() => {
-      waypointRef.current = (waypointRef.current + 1) % TRACK_WAYPOINTS.length;
-      const wp = TRACK_WAYPOINTS[waypointRef.current];
-      const prev = TRACK_WAYPOINTS[(waypointRef.current - 1 + TRACK_WAYPOINTS.length) % TRACK_WAYPOINTS.length];
-      const angle = Math.atan2(wp.y - prev.y, wp.x - prev.x) * (180 / Math.PI);
-
-      // Count laps
-        if (waypointRef.current === 0) {
-        lapRef.current += 1;
-        setLaps(lapRef.current);
-        addLog(`🏆 Lap ${lapRef.current} confirmed!`);
-        if (lapRef.current >= 3) {
-            stopRacing();
-            setWinner(playerId);
-            return;
-        }
-      }
-
-      // Update Top Speed (simulate minor variation)
-      const currentSpeed = 190 + Math.random() * 25; // Simulated km/h
-      if (currentSpeed > topSpeedRef.current) {
-          topSpeedRef.current = currentSpeed;
-      }
-
-      // Calculate total time if finishing
-      let finalTimeForState = 0;
-      if (waypointRef.current === 0 && lapRef.current >= 3) {
-          finalTimeForState = (Date.now() - (startTimeRef.current || Date.now())) / 1000;
-      }
-
-      clientRef.current?.publish({
-        destination: "/app/car.move",
-        body: JSON.stringify({ 
-          playerId, roomId, carColor: carColorKey, x: wp.x, y: wp.y, angle, speed: 9, 
-          status: lapRef.current >= 3 ? "FINISHED" : "RACING", 
-          lapsCompleted: lapRef.current,
-          totalTime: finalTimeForState
-        }),
-      });
-    }, 240); // Slightly faster interval for more speed
-
   };
+
+  // Automated countdown logic
+  useEffect(() => {
+    if (!connected || isRacing || winner) return;
+    
+    if (countdown > 0) {
+      const timer = setTimeout(() => setCountdown(prev => prev - 1), 1000);
+      return () => clearTimeout(timer);
+    } else if (countdown === 0 && !isRacing) {
+      startRacing();
+    }
+  }, [countdown, connected, isRacing, winner]);
 
   const stopRacing = () => {
     setIsRacing(false);
-    if (moveIntervalRef.current) { clearInterval(moveIntervalRef.current); moveIntervalRef.current = null; }
   };
 
   // ── Results & Achievements ──
@@ -319,6 +170,23 @@ export default function RacePage() {
   }, [winner, resultsSent, cars, playerId]);
 
 
+  const [dimensions, setDimensions] = useState({ 
+    width: Math.max(window.innerWidth - 380, 1020), 
+    height: Math.max(window.innerHeight - 200, 705) 
+  });
+
+  useEffect(() => {
+    const handleResize = () => {
+      setDimensions({
+        width: Math.max(window.innerWidth - 380, 1020),
+        height: Math.max(window.innerHeight - 200, 705)
+      });
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+
   const color = CAR_COLORS[carColorKey] || "#ff3333";
 
   return (
@@ -362,7 +230,16 @@ export default function RacePage() {
             </div>
 
             <div style={s.winnerBtns}>
-              <button onClick={() => { setWinner(null); setLaps(0); lapRef.current = 0; setResultsSent(false); }} style={{ ...s.playAgainBtn, background: color, boxShadow: `0 0 20px ${color}40` }}>RE-DEPLOY</button>
+              <button onClick={() => { 
+                setWinner(null); 
+                setLaps(0); 
+                lapRef.current = 0; 
+                setResultsSent(false); 
+                setRaceStats(null);
+                setCars({});
+                setCountdown(3);
+                setIsRacing(false);
+              }} style={{ ...s.playAgainBtn, background: color, boxShadow: `0 0 20px ${color}40` }}>RE-DEPLOY</button>
               <button onClick={() => navigate("/home")} style={s.homeBtn}>← TERMINAL</button>
             </div>
           </div>
@@ -393,10 +270,46 @@ export default function RacePage() {
 
       {/* Main area */}
       <div style={s.main}>
-        {/* Canvas */}
-        <div style={{ position: "relative" }}>
-            <canvas ref={canvasRef} width={680} height={470}
-                style={{ borderRadius: "20px", border: `1px solid rgba(255,255,255,0.05)`, display: "block", background: "rgba(0,0,0,0.5)", backdropFilter: "blur(10px)" }} />
+        <div style={{ position: "relative", flex: 1, display: "flex", justifyContent: "center" }}>
+            <GameCanvas 
+              playerId={playerId}
+              roomId={roomId}
+              serverState={cars}
+              onSendInput={(inputMsg) => {
+                const currentSpeed = (inputMsg.clientSpeed || 0) * 0.5; // Display speed conversion
+                if (currentSpeed > topSpeedRef.current) {
+                  topSpeedRef.current = currentSpeed;
+                }
+
+                clientRef.current?.publish({
+                  destination: "/app/car.move",
+                  body: JSON.stringify({
+                    playerId: inputMsg.playerId,
+                    roomId: inputMsg.roomId,
+                    carColor: carColorKey,
+                    x: inputMsg.clientX,
+                    y: inputMsg.clientY,
+                    angle: (inputMsg.clientAngle * 180) / Math.PI, 
+                    speed: inputMsg.clientSpeed,
+                    status: isRacing ? "RACING" : "WAITING",
+                    lapsCompleted: laps
+                  })
+                });
+              }}
+              raceStarted={isRacing}
+              countdown={countdown}
+              width={dimensions.width}
+              height={dimensions.height}
+              onLapChange={(newLap) => {
+                setLaps(newLap);
+                addLog(`🏆 Lap ${newLap} confirmed!`);
+              }}
+              onRaceFinish={(data) => {
+                setWinner(playerId);
+                addLog(`🏁 MISSION COMPLETE! Finished at rank #${data.position}`);
+                stopRacing();
+              }}
+            />
             <div style={{ position: "absolute", bottom: "20px", left: "20px", fontSize: "10px", color: "rgba(255,255,255,0.1)", letterSpacing: "2px", fontFamily: "'Orbitron'" }}>
                 SESSION: {roomId}
             </div>
@@ -416,19 +329,7 @@ export default function RacePage() {
             </div>
           </div>
 
-          {/* Race controls */}
-          <div style={s.card}>
-            <div style={s.cardLabel}>OPERATIONS</div>
-            {!isRacing
-              ? <button onClick={startRacing} disabled={!connected}
-                  style={{ ...s.raceBtn, background: connected ? color : "rgba(255,255,255,0.05)", color: connected ? "#000" : "rgba(255,255,255,0.2)", boxShadow: connected ? `0 0 30px ${color}40` : "none" }}>
-                  🏁 INITIALIZE
-                </button>
-              : <button onClick={stopRacing} style={{ ...s.raceBtn, background: "rgba(255, 51, 51, 0.1)", border: "1px solid #ff3333", color: "#ff3333" }}>
-                  ⏹ ABORT
-                </button>
-            }
-          </div>
+          {/* Operations card removed as race starts automatically */}
 
           {/* Leaderboard */}
           <div style={s.card}>

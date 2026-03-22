@@ -31,7 +31,6 @@ export default function RoomLobbyPage() {
   const [players, setPlayers]     = useState([]);
   const [connected, setConnected] = useState(false);
   const [copied, setCopied]       = useState(false);
-  const [countdown, setCountdown] = useState(null);
   const [dots, setDots]           = useState(".");
   const clientRef = useRef(null);
 
@@ -67,7 +66,7 @@ export default function RoomLobbyPage() {
 
         // Subscribe to game-start signal from host
         client.subscribe(`/topic/room/${roomId}/start`, () => {
-          setCountdown(3);
+          navigate("/race");
         });
 
         // Announce this player joining the room
@@ -94,13 +93,7 @@ export default function RoomLobbyPage() {
     return () => client.deactivate();
   }, []);
 
-  // ── Countdown → navigate to race ─────────────────────────────────────────
-  useEffect(() => {
-    if (countdown === null) return;
-    if (countdown === 0) { navigate("/race"); return; }
-    const t = setTimeout(() => setCountdown(c => c - 1), 1000);
-    return () => clearTimeout(t);
-  }, [countdown, navigate]);
+  // Countdown removed
 
   // ── Host starts the race ─────────────────────────────────────────────────
   const startRace = () => {
@@ -109,8 +102,8 @@ export default function RoomLobbyPage() {
       destination: `/app/game.start`,
       body: JSON.stringify({ roomId }),
     });
-    // Also start locally (host sees countdown too)
-    setCountdown(3);
+    // Navigate immediately
+    navigate("/race");
   };
 
   const copyCode = () => {
@@ -126,14 +119,7 @@ export default function RoomLobbyPage() {
     <div style={s.screen}>
       <div style={s.grid} />
 
-      {/* ── Countdown overlay ── */}
-      {countdown !== null && (
-        <div style={s.overlay}>
-          <div style={{ ...s.countNum, color: countdown === 0 ? "#00e87a" : "#ffd520", textShadow: `0 0 50px ${countdown === 0 ? "#00e87a" : "#ffd520"}80` }}>
-            {countdown === 0 ? "GO!" : countdown}
-          </div>
-        </div>
-      )}
+      {/* Countdown overlay removed */}
 
       {/* ── Header ── */}
       <div style={s.header}>
