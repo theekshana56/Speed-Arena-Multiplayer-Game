@@ -22,9 +22,17 @@ public class LB_GameResultController {
     // Save Game Result
     @PostMapping("/save")
     public ResponseEntity<LB_GameResult> saveResult(@RequestBody LB_GameResult result) {
+        System.out.println(">>> RECEIVING GAME RESULT");
+        System.out.println(">>> Player ID: " + result.getPlayerId());
+        System.out.println(">>> Player Name: " + result.getPlayerName());
+        System.out.println(">>> Top Speed: " + result.getTopSpeed());
+        System.out.println(">>> Total Time: " + result.getTotalTime());
+        
         LB_GameResult savedResult = service.saveGameResult(result);
+        System.out.println(">>> SAVED SUCCESSFUL. ID: " + savedResult.getId());
         return ResponseEntity.ok(savedResult);
     }
+
 
     // Get Leaderboard Top 10
     @GetMapping("/leaderboard")

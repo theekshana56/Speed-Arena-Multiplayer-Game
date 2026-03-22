@@ -1,4 +1,4 @@
-const BASE_URL = "http://localhost:8086"; // Spring Boot
+const BASE_URL = "http://127.0.0.1:8080"; // Using explicit IP for local stability
 
 export async function apiFetch(path, options = {}) {
   const { headers, ...rest } = options;
@@ -20,7 +20,9 @@ export async function apiFetch(path, options = {}) {
   }
 
   if (!res.ok) {
-    throw new Error(data.message || "Request failed");
+    const errorMsg = data.message || data.error || text || "Request failed";
+    console.error(`[API ERROR] ${path}:`, errorMsg);
+    throw new Error(errorMsg);
   }
 
   return data;
