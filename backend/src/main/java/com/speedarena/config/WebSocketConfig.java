@@ -13,8 +13,8 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     @Override
     public void configureMessageBroker(MessageBrokerRegistry config) {
         // '/topic' is where the server sends messages (broadcasts)
-        config.enableSimpleBroker("/topic"); 
-        
+        config.enableSimpleBroker("/topic");
+
         // '/app' is the prefix for messages sent from the players to the server
         config.setApplicationDestinationPrefixes("/app");
     }

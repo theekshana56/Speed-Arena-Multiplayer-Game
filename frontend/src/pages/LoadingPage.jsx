@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { loginUser, registerUser } from "../services/authService";
+import { clearNetworkPlayerId } from "../session/playerIdentity.js";
 
 const CAR_COLORS = {
   red: { hex: "#ff3333", glow: "rgba(255,51,51,0.4)", name: "VIPER" },
@@ -11,6 +12,23 @@ const CAR_COLORS = {
 };
 
 
+
+const ov = {
+  bg: {
+    position: "fixed", inset: 0, background: "rgba(3,3,14,0.85)", zIndex: 9999,
+    display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(12px)"
+  },
+  box: {
+    background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "16px",
+    padding: "26px 22px", width: "92vw", fontFamily: "'Inter', sans-serif",
+    position: "relative", maxHeight: "88vh", overflowY: "auto", boxShadow: "0 20px 40px rgba(0,0,0,0.5)"
+  },
+  x: {
+    position: "absolute", top: "12px", right: "14px", background: "transparent",
+    border: "none", color: "rgba(255,255,255,0.2)", fontSize: "15px", cursor: "pointer",
+    padding: "4px 7px", transition: "color 0.2s"
+  },
+};
 
 // ─── Settings overlay ─────────────────────────────────────────────────────────
 function SettingsPanel({ onClose }) {
@@ -114,22 +132,6 @@ function SettingsPanel({ onClose }) {
   );
 }
 
-const ov = {
-  bg: {
-    position: "fixed", inset: 0, background: "rgba(3,3,14,0.85)", zIndex: 9999,
-    display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(12px)"
-  },
-  box: {
-    background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "16px",
-    padding: "26px 22px", width: "92vw", fontFamily: "'Inter', sans-serif",
-    position: "relative", maxHeight: "88vh", overflowY: "auto", boxShadow: "0 20px 40px rgba(0,0,0,0.5)"
-  },
-  x: {
-    position: "absolute", top: "12px", right: "14px", background: "transparent",
-    border: "none", color: "rgba(255,255,255,0.2)", fontSize: "15px", cursor: "pointer",
-    padding: "4px 7px", transition: "color 0.2s"
-  },
-};
 
 const inputStyle = {
   background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "8px",
@@ -342,6 +344,7 @@ export default function LoadingPage() {
   const handleAuthSuccess = (username) => {
     setAuthedUser(username);
     if (typeof sessionStorage !== "undefined") {
+      clearNetworkPlayerId();
       sessionStorage.setItem("playerName", username);
       sessionStorage.setItem("username", username);
     }

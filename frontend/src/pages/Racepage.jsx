@@ -1,11 +1,17 @@
-import { useState, useRef, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useRef, useEffect, useMemo } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import SockJS from "sockjs-client";
 import { Client } from "@stomp/stompjs";
 import { apiFetch } from "../services/apiClient";
 import { tokenService } from "../services/tokenService";
 import GameCanvas from "../components/GameCanvas";
-import { STARTING_POSITIONS } from "../game/carPhysics";
+import UnityRaceCanvas from "../components/UnityRaceCanvas";
+import { getStartPositionsFromLayout } from "../game/carPhysics";
+import { buildPolylineGameLayoutForMap, canonicalMapId, normalizeMapId } from "../game/track/polylineTrack.js";
+import { getOrCreateNetworkPlayerId } from "../session/playerIdentity.js";
+import { clampGridSlot } from "../utils/gridSlot.js";
+
+const PREFER_UNITY_RACE = import.meta.env.VITE_USE_UNITY_RACE !== "false";
 
 
 const WS_URL = "http://127.0.0.1:8080/ws-racing";
@@ -20,10 +26,22 @@ const CAR_COLORS = {
 
 export default function RacePage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const playerName = sessionStorage.getItem("playerName") || "PLAYER";
   const carColorKey = sessionStorage.getItem("carColor") || "red";
   const roomId = sessionStorage.getItem("roomId") || "room_001";
-  const playerId = playerName.toLowerCase().replace(/\s/g, "_");
+  const playerId = useMemo(() => getOrCreateNetworkPlayerId(), []);
+  const [mapId, setMapId] = useState(() => canonicalMapId(sessionStorage.getItem("mapId")));
+  const [startAtEpochMs, setStartAtEpochMs] = useState(() => {
+    const v = Number(sessionStorage.getItem("startAtEpochMs"));
+    return Number.isFinite(v) && v > 0 ? v : null;
+  });
+  const [nowMs, setNowMs] = useState(Date.now());
+  const [startIndex, setStartIndex] = useState(() => {
+    // Do not trust previous sessionStorage values for multiplayer start grid.
+    // The server will push `/topic/room/${roomId}/slots` shortly after join.
+    return 0;
+  });
 
   const [connected, setConnected] = useState(false);
   const [isRacing, setIsRacing] = useState(false);
@@ -33,7 +51,6 @@ export default function RacePage() {
   const [log, setLog] = useState([]);
   const [resultsSent, setResultsSent] = useState(false);
   const [raceStats, setRaceStats] = useState(null);
-  const [countdown, setCountdown] = useState(3);
 
   const startTimeRef = useRef(null);
   const topSpeedRef = useRef(0);
@@ -41,14 +58,58 @@ export default function RacePage() {
   const clientRef = useRef(null);
   const lapRef = useRef(0);
   const isRacingRef = useRef(false);
+  const playerIdRef = useRef(playerId);
+  const winnerRef = useRef(null);
+  const unityInstanceRef = useRef(null);
+  // Debug helper: avoid console spam. We log each remote playerId at most once/sec.
+  const lastForwardAtByPlayerRef = useRef({});
+  const gridSlotRef = useRef(clampGridSlot(startIndex));
+  const raceIdentityRef = useRef({
+    playerId,
+    roomId,
+    carColor: carColorKey,
+    isRacing,
+    gridSlot: clampGridSlot(startIndex),
+  });
+
+  const [unityLoadFailed, setUnityLoadFailed] = useState(false);
+
+  const gridStartPositions = useMemo(() => {
+    const layout = buildPolylineGameLayoutForMap(normalizeMapId(mapId));
+    const pts = getStartPositionsFromLayout(layout);
+    return pts.length ? pts : [{ x: 1310, y: 400, angle: Math.PI / 2 }];
+  }, [mapId]);
 
   useEffect(() => { isRacingRef.current = isRacing; }, [isRacing]);
+  useEffect(() => { playerIdRef.current = playerId; }, [playerId]);
+  useEffect(() => { winnerRef.current = winner; }, [winner]);
+  useEffect(() => {
+    const gs = clampGridSlot(startIndex);
+    gridSlotRef.current = gs;
+    raceIdentityRef.current = { playerId, roomId, carColor: carColorKey, isRacing, gridSlot: gs };
+  }, [playerId, roomId, carColorKey, isRacing, startIndex]);
+
+  const showUnityClient = PREFER_UNITY_RACE && !unityLoadFailed;
+
+  /** Optional deep-link: /race?map=desert — only if room has not already stored a map (lobby/server wins). */
+  useEffect(() => {
+    const q = canonicalMapId(searchParams.get("map"));
+    if (!q) return;
+    if (canonicalMapId(sessionStorage.getItem("mapId"))) return;
+    setMapId(q);
+    sessionStorage.setItem("mapId", q);
+  }, [searchParams]);
 
   const addLog = (msg) => setLog(prev => [...prev.slice(-6), msg]);
 
+  const stopRacing = () => {
+    setIsRacing(false);
+  };
+
   // Legacy draw loop removed as it is now handled by GameCanvas
 
-  // WebSocket connect on mount
+  // WebSocket connect on mount (session identity fixed for this page visit)
+  /* eslint-disable react-hooks/exhaustive-deps */
   useEffect(() => {
     const client = new Client({
       webSocketFactory: () => new SockJS(WS_URL),
@@ -57,18 +118,111 @@ export default function RacePage() {
         addLog(`✅ Link established as ${playerId}`);
         client.subscribe("/topic/game-state", msg => {
           const car = JSON.parse(msg.body);
+          if (car.roomId && car.roomId !== roomId) return;
+
           setCars(prev => ({ ...prev, [car.playerId]: car }));
-          
+
+          const inst = unityInstanceRef.current;
+          // Forward all car states into Unity.
+          // Unity decides whether a DTO is "local" (filtered by its own SetLocalIdentity playerId)
+          // or a remote opponent. This avoids React/Unity playerId desync issues between tabs.
+          if (inst) {
+            try {
+              const pid = car?.playerId;
+              const now = Date.now();
+              const last = lastForwardAtByPlayerRef.current[pid] || 0;
+              if (pid && now - last > 1000) {
+                lastForwardAtByPlayerRef.current[pid] = now;
+                console.log(
+                  `[UnityForward] my=${playerIdRef.current} forwarding=${pid} roomId=${car?.roomId} gridSlot=${car?.gridSlot}`
+                );
+              }
+              inst.SendMessage("SpeedArenaNetBridge", "ApplyRemoteState", msg.body);
+            } catch (err) {
+              console.warn("[Unity] ApplyRemoteState", err);
+            }
+          }
+
           // Only trigger winner overlay if we are currently racing and a winner is found
           // (prevents old race data from immediately re-triggering the overlay after clicking RE-DEPLOY)
-          if (car.lapsCompleted >= 3 && !winner && isRacingRef.current) {
+          if (car.lapsCompleted >= 3 && !winnerRef.current && isRacingRef.current) {
             setWinner(car.playerId);
           }
         });
-        const start = STARTING_POSITIONS[0];
+
+        // Sync host-selected map
+        client.subscribe(`/topic/room/${roomId}/map`, (msg) => {
+          try {
+            const data = JSON.parse(msg.body);
+            const newMap = canonicalMapId(data?.mapId);
+            if (!newMap) return;
+            setMapId(newMap);
+            sessionStorage.setItem("mapId", newMap);
+
+            const inst = unityInstanceRef.current;
+            if (inst) {
+              try {
+                inst.SendMessage("SpeedArenaNetBridge", "LoadMap", newMap);
+              } catch { /* ignore */ }
+            }
+          } catch {
+            // ignore
+          }
+        });
+
+        // Sync slot assignments (join order -> start grid index)
+        client.subscribe(`/topic/room/${roomId}/slots`, (msg) => {
+          try {
+            const data = JSON.parse(msg.body);
+            const rawSlot = data?.[playerId];
+            const n = Number(rawSlot);
+            if (Number.isFinite(n) && n >= 0) {
+              const gs = clampGridSlot(n);
+              setStartIndex(gs);
+              sessionStorage.setItem("startIndex", String(gs));
+            }
+          } catch {
+            // ignore
+          }
+        });
+
+        // Shared start countdown timestamp
+        client.subscribe(`/topic/room/${roomId}/start`, (msg) => {
+          try {
+            const data = JSON.parse(msg.body);
+            if (data?.startAtEpochMs) {
+              const t = Number(data.startAtEpochMs);
+              if (Number.isFinite(t) && t > 0) {
+                setStartAtEpochMs(t);
+                sessionStorage.setItem("startAtEpochMs", String(t));
+              }
+            }
+            if (data?.mapId) {
+              const m = canonicalMapId(data.mapId);
+              if (m) {
+                setMapId(m);
+                sessionStorage.setItem("mapId", m);
+              }
+            }
+          } catch {
+            // ignore
+          }
+        });
+
+        const start = gridStartPositions[startIndex] || gridStartPositions[0];
         client.publish({
           destination: "/app/player.join",
-          body: JSON.stringify({ playerId, roomId, carColor: carColorKey, x: start.x, y: start.y, angle: start.angle, speed: 0, status: "WAITING" }),
+          body: JSON.stringify({
+            playerId,
+            roomId,
+            carColor: carColorKey,
+            x: start.x,
+            y: start.y,
+            angle: start.angle,
+            speed: 0,
+            status: "WAITING",
+            gridSlot: clampGridSlot(startIndex),
+          }),
         });
       },
       onDisconnect: () => { setConnected(false); addLog("🔌 Link severed"); },
@@ -78,6 +232,7 @@ export default function RacePage() {
     clientRef.current = client;
     return () => { stopRacing(); client.deactivate(); };
   }, []);
+  /* eslint-enable react-hooks/exhaustive-deps */
 
   const startRacing = () => {
     if (isRacing) return;
@@ -85,24 +240,177 @@ export default function RacePage() {
     startTimeRef.current = Date.now();
     setResultsSent(false);
     setRaceStats(null);
-    setCountdown(0);
     addLog("🏁 Mission initialized!");
   };
 
-  // Automated countdown logic
+  // Tick for countdown rendering + start trigger (nowMs must drive the start effect below)
   useEffect(() => {
-    if (!connected || isRacing || winner) return;
-    
-    if (countdown > 0) {
-      const timer = setTimeout(() => setCountdown(prev => prev - 1), 1000);
-      return () => clearTimeout(timer);
-    } else if (countdown === 0 && !isRacing) {
-      startRacing();
-    }
-  }, [countdown, connected, isRacing, winner]);
+    if (!startAtEpochMs) return undefined;
+    const t = setInterval(() => setNowMs(Date.now()), 100);
+    return () => clearInterval(t);
+  }, [startAtEpochMs]);
 
-  const stopRacing = () => {
-    setIsRacing(false);
+  // Solo / direct /race: no host start in session → local practice countdown so Unity gets SetRacing("1")
+  useEffect(() => {
+    const id = setTimeout(() => {
+      let scheduledPractice = false;
+      setStartAtEpochMs((prev) => {
+        if (prev != null) return prev;
+        const s = sessionStorage.getItem("startAtEpochMs");
+        const n = Number(s);
+        if (Number.isFinite(n) && n > 0) return n;
+        scheduledPractice = true;
+        const at = Date.now() + 3000;
+        sessionStorage.setItem("startAtEpochMs", String(at));
+        return at;
+      });
+      if (scheduledPractice) {
+        addLog("Practice mode — start the backend for multiplayer sync.");
+      }
+    }, 1200);
+    return () => clearTimeout(id);
+  }, []);
+
+  useEffect(() => {
+    if (winner) return;
+    if (!startAtEpochMs) return;
+    if (Date.now() < startAtEpochMs) return;
+    if (!isRacing) startRacing();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- nowMs drives re-check; startRacing intentionally omitted
+  }, [winner, startAtEpochMs, isRacing, nowMs]);
+
+  useEffect(() => {
+    const inst = unityInstanceRef.current;
+    if (!inst || !showUnityClient) return;
+    try {
+      inst.SendMessage("SpeedArenaNetBridge", "SetRacing", isRacing ? "1" : "0");
+    } catch { /* no-op */ }
+  }, [isRacing, showUnityClient]);
+
+  useEffect(() => {
+    const inst = unityInstanceRef.current;
+    if (!inst || !showUnityClient) return;
+    try {
+      inst.SendMessage(
+        "SpeedArenaNetBridge",
+        "SetLocalIdentity",
+        JSON.stringify({ playerId, roomId, carColor: carColorKey, gridSlot: clampGridSlot(startIndex) }),
+      );
+    } catch { /* no-op */ }
+  }, [playerId, roomId, carColorKey, startIndex, showUnityClient]);
+
+  useEffect(() => {
+    const inst = unityInstanceRef.current;
+    if (!inst || !showUnityClient) return;
+    try {
+      inst.SendMessage("SpeedArenaNetBridge", "LoadMap", normalizeMapId(mapId));
+    } catch { /* no-op */ }
+  }, [mapId, showUnityClient]);
+
+  // Re-send join position once we know our start grid index
+  useEffect(() => {
+    if (!connected) return;
+    const start = gridStartPositions[startIndex] || gridStartPositions[0];
+    clientRef.current?.publish({
+      destination: "/app/player.join",
+      body: JSON.stringify({
+        playerId,
+        roomId,
+        carColor: carColorKey,
+        x: start.x,
+        y: start.y,
+        angle: start.angle,
+        speed: 0,
+        status: "WAITING",
+        gridSlot: clampGridSlot(startIndex),
+      }),
+    });
+  }, [connected, startIndex, playerId, roomId, carColorKey, gridStartPositions]);
+
+  const handleUnityReady = (instance) => {
+    unityInstanceRef.current = instance;
+    setUnityLoadFailed(false);
+    const id = raceIdentityRef.current;
+    const roomMap =
+      canonicalMapId(sessionStorage.getItem("mapId")) || canonicalMapId(mapId) || "forest";
+    try {
+      // Order matches SpeedArenaNetBridge: identity → racing state → scene from room map id
+      instance.SendMessage(
+        "SpeedArenaNetBridge",
+        "SetLocalIdentity",
+        JSON.stringify({
+          playerId: id.playerId,
+          roomId: id.roomId,
+          carColor: id.carColor,
+          gridSlot: clampGridSlot(id.gridSlot ?? gridSlotRef.current),
+        }),
+      );
+      instance.SendMessage("SpeedArenaNetBridge", "SetRacing", id.isRacing ? "1" : "0");
+      instance.SendMessage("SpeedArenaNetBridge", "LoadMap", roomMap);
+    } catch (err) {
+      console.warn("[Unity] init bridge", err);
+    }
+
+    // Unity may load slightly after the first /topic/game-state frames arrive.
+    // Replay the latest known car states so every tab shows all cars immediately.
+    setTimeout(() => {
+      const inst = unityInstanceRef.current;
+      if (!inst) return;
+      Object.values(cars).forEach((car) => {
+        if (!car) return;
+        if (car.roomId && car.roomId !== roomId) return;
+        try {
+          inst.SendMessage("SpeedArenaNetBridge", "ApplyRemoteState", JSON.stringify(car));
+        } catch (e) {
+          // ignore per car
+        }
+      });
+    }, 1000);
+  };
+
+  const countdownLeft = startAtEpochMs ? Math.max(0, Math.ceil((startAtEpochMs - nowMs) / 1000)) : null;
+
+  const handleUnityLocalCarState = (jsonStr) => {
+    let o;
+    try {
+      o = JSON.parse(jsonStr);
+    } catch {
+      return;
+    }
+    const currentSpeed = (o.speed || 0) * 0.5;
+    if (currentSpeed > topSpeedRef.current) {
+      topSpeedRef.current = currentSpeed;
+    }
+
+    if (typeof o.lapsCompleted === "number") {
+      setLaps(o.lapsCompleted);
+      if (o.lapsCompleted > lapRef.current) {
+        addLog(`🏆 Lap ${o.lapsCompleted} confirmed!`);
+        lapRef.current = o.lapsCompleted;
+      }
+    }
+
+    if (
+      o.lapsCompleted >= 3 &&
+      isRacingRef.current &&
+      !winnerRef.current &&
+      o.playerId === playerIdRef.current
+    ) {
+      setWinner(playerIdRef.current);
+      addLog("🏁 MISSION COMPLETE!");
+      stopRacing();
+    }
+
+    if (typeof o.gridSlot !== "number" || !Number.isFinite(o.gridSlot)) {
+      o.gridSlot = gridSlotRef.current;
+    } else {
+      o.gridSlot = clampGridSlot(o.gridSlot);
+    }
+
+    clientRef.current?.publish({
+      destination: "/app/car.move",
+      body: JSON.stringify(o),
+    });
   };
 
   // ── Results & Achievements ──
@@ -237,7 +545,8 @@ export default function RacePage() {
                 setResultsSent(false); 
                 setRaceStats(null);
                 setCars({});
-                setCountdown(3);
+                setStartAtEpochMs(null);
+                sessionStorage.removeItem("startAtEpochMs");
                 setIsRacing(false);
               }} style={{ ...s.playAgainBtn, background: color, boxShadow: `0 0 20px ${color}40` }}>RE-DEPLOY</button>
               <button onClick={() => navigate("/home")} style={s.homeBtn}>← TERMINAL</button>
@@ -271,45 +580,87 @@ export default function RacePage() {
       {/* Main area */}
       <div style={s.main}>
         <div style={{ position: "relative", flex: 1, display: "flex", justifyContent: "center" }}>
-            <GameCanvas 
-              playerId={playerId}
-              roomId={roomId}
-              serverState={cars}
-              onSendInput={(inputMsg) => {
-                const currentSpeed = (inputMsg.clientSpeed || 0) * 0.5; // Display speed conversion
-                if (currentSpeed > topSpeedRef.current) {
-                  topSpeedRef.current = currentSpeed;
-                }
+            {showUnityClient ? (
+              <UnityRaceCanvas
+                width={dimensions.width}
+                height={dimensions.height}
+                onReady={handleUnityReady}
+                onLoadError={() => {
+                  setUnityLoadFailed(true);
+                  unityInstanceRef.current = null;
+                  addLog("⚠️ Unity WebGL unavailable — using canvas client");
+                }}
+                onLocalCarState={handleUnityLocalCarState}
+              />
+            ) : (
+              <GameCanvas
+                playerId={playerId}
+                roomId={roomId}
+                mapId={normalizeMapId(mapId)}
+                serverState={cars}
+                onSendInput={(inputMsg) => {
+                  const currentSpeed = (inputMsg.clientSpeed || 0) * 0.5;
+                  if (currentSpeed > topSpeedRef.current) {
+                    topSpeedRef.current = currentSpeed;
+                  }
 
-                clientRef.current?.publish({
-                  destination: "/app/car.move",
-                  body: JSON.stringify({
-                    playerId: inputMsg.playerId,
-                    roomId: inputMsg.roomId,
-                    carColor: carColorKey,
-                    x: inputMsg.clientX,
-                    y: inputMsg.clientY,
-                    angle: (inputMsg.clientAngle * 180) / Math.PI, 
-                    speed: inputMsg.clientSpeed,
-                    status: isRacing ? "RACING" : "WAITING",
-                    lapsCompleted: laps
-                  })
-                });
-              }}
-              raceStarted={isRacing}
-              countdown={countdown}
-              width={dimensions.width}
-              height={dimensions.height}
-              onLapChange={(newLap) => {
-                setLaps(newLap);
-                addLog(`🏆 Lap ${newLap} confirmed!`);
-              }}
-              onRaceFinish={(data) => {
-                setWinner(playerId);
-                addLog(`🏁 MISSION COMPLETE! Finished at rank #${data.position}`);
-                stopRacing();
-              }}
-            />
+                  clientRef.current?.publish({
+                    destination: "/app/car.move",
+                    body: JSON.stringify({
+                      playerId: inputMsg.playerId,
+                      roomId: inputMsg.roomId,
+                      carColor: carColorKey,
+                      gridSlot: clampGridSlot(startIndex),
+                      x: inputMsg.clientX,
+                      y: inputMsg.clientY,
+                      angle: (inputMsg.clientAngle * 180) / Math.PI,
+                      speed: inputMsg.clientSpeed,
+                      status: isRacing ? "RACING" : "WAITING",
+                      lapsCompleted: laps,
+                    }),
+                  });
+                }}
+                raceStarted={isRacing}
+                countdown={countdownLeft ?? 0}
+                width={dimensions.width}
+                height={dimensions.height}
+                onLapChange={(newLap) => {
+                  setLaps(newLap);
+                  addLog(`🏆 Lap ${newLap} confirmed!`);
+                }}
+                onRaceFinish={(data) => {
+                  setWinner(playerId);
+                  addLog(`🏁 MISSION COMPLETE! Finished at rank #${data.position}`);
+                  stopRacing();
+                }}
+              />
+            )}
+
+            {countdownLeft != null && countdownLeft > 0 && (
+              <div
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  background: "rgba(3,3,14,0.65)",
+                  backdropFilter: "blur(10px)",
+                  zIndex: 5,
+                  pointerEvents: "none",
+                  fontFamily: "'Orbitron', sans-serif",
+                }}
+              >
+                <div style={{ textAlign: "center" }}>
+                  <div style={{ fontSize: "11px", letterSpacing: "6px", color: "rgba(255,255,255,0.35)", marginBottom: "16px" }}>
+                    RACE STARTS IN
+                  </div>
+                  <div style={{ fontSize: "120px", fontWeight: "900", color: "#ffd520", textShadow: "0 0 40px rgba(255,213,32,0.35)" }}>
+                    {countdownLeft}
+                  </div>
+                </div>
+              </div>
+            )}
             <div style={{ position: "absolute", bottom: "20px", left: "20px", fontSize: "10px", color: "rgba(255,255,255,0.1)", letterSpacing: "2px", fontFamily: "'Orbitron'" }}>
                 SESSION: {roomId}
             </div>

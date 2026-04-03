@@ -48,6 +48,9 @@ public class CarMoveMessage {
      */
     private boolean turnRight;
 
+    /** Handbrake (Space) — low grip / tighter turns */
+    private boolean handbrake;
+
     // ─── Timing & Sequencing ────────────────────────────────────────────────────
 
     /**
@@ -122,7 +125,7 @@ public class CarMoveMessage {
      * Checks if any input is being pressed.
      */
     public boolean hasInput() {
-        return accelerate || brake || turnLeft || turnRight;
+        return accelerate || brake || turnLeft || turnRight || handbrake;
     }
 
     /**
@@ -157,6 +160,9 @@ public class CarMoveMessage {
 
     public boolean isTurnRight() { return turnRight; }
     public void setTurnRight(boolean turnRight) { this.turnRight = turnRight; }
+
+    public boolean isHandbrake() { return handbrake; }
+    public void setHandbrake(boolean handbrake) { this.handbrake = handbrake; }
 
     public long getTimestamp() { return timestamp; }
     public void setTimestamp(long timestamp) { this.timestamp = timestamp; }

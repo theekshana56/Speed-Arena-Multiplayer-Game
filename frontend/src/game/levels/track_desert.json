@@ -1,0 +1,506 @@
+[
+  {
+    "type": "checkpoint",
+    "x": 184.4,
+    "y": 170.1,
+    "rot": 0,
+    "name": "Checkpoint (3)",
+    "id": 1
+  },
+  {
+    "type": "checkpoint",
+    "x": 147.6,
+    "y": 213.2,
+    "rot": 90,
+    "name": "Checkpoint (4)",
+    "id": 2
+  },
+  {
+    "type": "checkpoint",
+    "x": -14.1,
+    "y": 213.2,
+    "rot": 90,
+    "name": "Checkpoint (10)",
+    "id": 3
+  },
+  {
+    "type": "checkpoint",
+    "x": -55.6,
+    "y": 176.1,
+    "rot": 180,
+    "name": "Checkpoint (5)",
+    "id": 4
+  },
+  {
+    "type": "checkpoint",
+    "x": -55.7,
+    "y": 90.5,
+    "rot": 180,
+    "name": "Checkpoint (6)",
+    "id": 5
+  },
+  {
+    "type": "checkpoint",
+    "x": -14.1,
+    "y": 53.2,
+    "rot": 90,
+    "name": "Checkpoint (11)",
+    "id": 6
+  },
+  {
+    "type": "checkpoint",
+    "x": 66.5,
+    "y": 53.2,
+    "rot": 90,
+    "name": "Checkpoint (12)",
+    "id": 7
+  },
+  {
+    "type": "checkpoint",
+    "x": 104.5,
+    "y": 13.5,
+    "rot": 180,
+    "name": "Checkpoint (7)",
+    "id": 8
+  },
+  {
+    "type": "checkpoint",
+    "x": 66.5,
+    "y": -26.7,
+    "rot": 90,
+    "name": "Checkpoint (13)",
+    "id": 9
+  },
+  {
+    "type": "checkpoint",
+    "x": -15.75,
+    "y": -26.7,
+    "rot": 90,
+    "name": "Checkpoint (14)",
+    "id": 10
+  },
+  {
+    "type": "checkpoint",
+    "x": -55.6,
+    "y": -62.3,
+    "rot": 180,
+    "name": "Checkpoint (8)",
+    "id": 11
+  },
+  {
+    "type": "checkpoint",
+    "x": -55.6,
+    "y": -149.79999,
+    "rot": 180,
+    "name": "Checkpoint (9)",
+    "id": 12
+  },
+  {
+    "type": "checkpoint",
+    "x": -15.75,
+    "y": -186.7,
+    "rot": 90,
+    "name": "Checkpoint (15)",
+    "id": 13
+  },
+  {
+    "type": "checkpoint",
+    "x": 147.75,
+    "y": -186.7,
+    "rot": 90,
+    "name": "Checkpoint (16)",
+    "id": 14
+  },
+  {
+    "type": "checkpoint",
+    "x": 184.4,
+    "y": -149.79999,
+    "rot": 180,
+    "name": "Checkpoint (17)",
+    "id": 15
+  },
+  {
+    "type": "tree-1",
+    "x": -92.7,
+    "y": -81.3,
+    "rot": 0,
+    "name": "Plant-2 (9)",
+    "id": -1
+  },
+  {
+    "type": "tree-1",
+    "x": 21.550003,
+    "y": 119.2,
+    "rot": 0,
+    "name": "Plant-2 (4)",
+    "id": -1
+  },
+  {
+    "type": "tree-1",
+    "x": 142.8,
+    "y": 7.2,
+    "rot": 0,
+    "name": "Plant-2",
+    "id": -1
+  },
+  {
+    "type": "tree-1",
+    "x": 57.300003,
+    "y": 248.2,
+    "rot": 0,
+    "name": "Plant-2 (17)",
+    "id": -1
+  },
+  {
+    "type": "road-1",
+    "x": 24.449997,
+    "y": 53.200035,
+    "rot": 90,
+    "name": "Road-1 (15)",
+    "id": -1
+  },
+  {
+    "type": "start-pos",
+    "x": 176.3,
+    "y": -57.6,
+    "rot": 90,
+    "name": "StartPosition (3)",
+    "id": -1
+  },
+  {
+    "type": "finish-line-1",
+    "x": 184.4,
+    "y": -28.9,
+    "rot": 0,
+    "name": "Checkpoint (2)",
+    "id": 0
+  },
+  {
+    "type": "tree-1",
+    "x": 110.55,
+    "y": 112.45,
+    "rot": 0,
+    "name": "Plant-2 (3)",
+    "id": -1
+  },
+  {
+    "type": "tree-1",
+    "x": 235.3,
+    "y": 103.45,
+    "rot": 0,
+    "name": "Plant-2 (1)",
+    "id": -1
+  },
+  {
+    "type": "road-1",
+    "x": 104.350006,
+    "y": -186.69998,
+    "rot": 90,
+    "name": "Road-1 (12)",
+    "id": -1
+  },
+  {
+    "type": "tree-1",
+    "x": -127.2,
+    "y": 8.199997,
+    "rot": 0,
+    "name": "Plant-2 (21)",
+    "id": -1
+  },
+  {
+    "type": "start-pos",
+    "x": 193.1,
+    "y": -57.6,
+    "rot": 90,
+    "name": "StartPosition (2)",
+    "id": -1
+  },
+  {
+    "type": "road-1",
+    "x": 24.450005,
+    "y": -26.799973,
+    "rot": 90,
+    "name": "Road-1 (14)",
+    "id": -1
+  },
+  {
+    "type": "road-2",
+    "x": -55.5,
+    "y": -26.79998,
+    "rot": 90,
+    "name": "Road-2 (1)",
+    "id": -1
+  },
+  {
+    "type": "tree-1",
+    "x": 63.300003,
+    "y": 136.2,
+    "rot": 0,
+    "name": "Plant-2 (5)",
+    "id": -1
+  },
+  {
+    "type": "road-1",
+    "x": 24.450005,
+    "y": -186.69998,
+    "rot": 90,
+    "name": "Road-1 (13)",
+    "id": -1
+  },
+  {
+    "type": "tree-1",
+    "x": 62.800003,
+    "y": 21.199997,
+    "rot": 0,
+    "name": "Plant-2 (7)",
+    "id": -1
+  },
+  {
+    "type": "road-2",
+    "x": 104.40002,
+    "y": -26.799973,
+    "rot": -90,
+    "name": "Road-2 (4)",
+    "id": -1
+  },
+  {
+    "type": "road-1",
+    "x": 184.3,
+    "y": 53.049995,
+    "rot": 0,
+    "name": "Road-1 (9)",
+    "id": -1
+  },
+  {
+    "type": "start-pos",
+    "x": 176.20001,
+    "y": -40.5,
+    "rot": 90,
+    "name": "StartPosition (1)",
+    "id": -1
+  },
+  {
+    "type": "road-2",
+    "x": 184.29999,
+    "y": 213.10004,
+    "rot": 0,
+    "name": "Road-2 (7)",
+    "id": -1
+  },
+  {
+    "type": "road-1",
+    "x": 184.3,
+    "y": 132.94998,
+    "rot": 0,
+    "name": "Road-1 (11)",
+    "id": -1
+  },
+  {
+    "type": "tree-1",
+    "x": 35.050003,
+    "y": -84.3,
+    "rot": 0,
+    "name": "Plant-2 (11)",
+    "id": -1
+  },
+  {
+    "type": "tree-1",
+    "x": 19.800003,
+    "y": 5.949997,
+    "rot": 0,
+    "name": "Plant-2 (8)",
+    "id": -1
+  },
+  {
+    "type": "tree-1",
+    "x": 217.55,
+    "y": -8.300003,
+    "rot": 0,
+    "name": "Plant-2 (15)",
+    "id": -1
+  },
+  {
+    "type": "tree-1",
+    "x": 169.55,
+    "y": -253.8,
+    "rot": 0,
+    "name": "Plant-2 (13)",
+    "id": -1
+  },
+  {
+    "type": "road-1",
+    "x": -55.499992,
+    "y": -106.74998,
+    "rot": 0,
+    "name": "Road-1 (10)",
+    "id": -1
+  },
+  {
+    "type": "tree-1",
+    "x": 201.05,
+    "y": 233.95,
+    "rot": 0,
+    "name": "Plant-2 (16)",
+    "id": -1
+  },
+  {
+    "type": "road-2",
+    "x": -55.500015,
+    "y": 213.10002,
+    "rot": 90,
+    "name": "Road-2 (6)",
+    "id": -1
+  },
+  {
+    "type": "tree-1",
+    "x": -86.2,
+    "y": 130.2,
+    "rot": 0,
+    "name": "Plant-2 (20)",
+    "id": -1
+  },
+  {
+    "type": "tree-1",
+    "x": 253.55,
+    "y": -131.55,
+    "rot": 0,
+    "name": "Plant-2 (14)",
+    "id": -1
+  },
+  {
+    "type": "road-1",
+    "x": -55.500008,
+    "y": 133.15002,
+    "rot": 0,
+    "name": "Road-1 (16)",
+    "id": -1
+  },
+  {
+    "type": "tree-1",
+    "x": -101.7,
+    "y": 179.45,
+    "rot": 0,
+    "name": "Plant-2 (19)",
+    "id": -1
+  },
+  {
+    "type": "road-2",
+    "x": -55.500008,
+    "y": 53.20003,
+    "rot": 180,
+    "name": "Road-2 (5)",
+    "id": -1
+  },
+  {
+    "type": "start-pos",
+    "x": 184.20001,
+    "y": -28.509998,
+    "rot": 0,
+    "name": "StartPos",
+    "id": -1
+  },
+  {
+    "type": "road-1",
+    "x": 184.3,
+    "y": -26.849998,
+    "rot": 0,
+    "name": "Road-1 (1)",
+    "id": -1
+  },
+  {
+    "type": "road-1",
+    "x": 104.34999,
+    "y": 213.10004,
+    "rot": 90,
+    "name": "Road-1 (18)",
+    "id": -1
+  },
+  {
+    "type": "road-2",
+    "x": -55.499992,
+    "y": -186.69998,
+    "rot": 180,
+    "name": "Road-2 (2)",
+    "id": -1
+  },
+  {
+    "type": "tree-1",
+    "x": 6.550003,
+    "y": 165.2,
+    "rot": 0,
+    "name": "Plant-2 (2)",
+    "id": -1
+  },
+  {
+    "type": "tree-1",
+    "x": -50.949997,
+    "y": 16.449997,
+    "rot": 0,
+    "name": "Plant-2 (6)",
+    "id": -1
+  },
+  {
+    "type": "tree-1",
+    "x": -87.45,
+    "y": 213.2,
+    "rot": 0,
+    "name": "Plant-2 (18)",
+    "id": -1
+  },
+  {
+    "type": "start-pos",
+    "x": 193,
+    "y": -40.5,
+    "rot": 90,
+    "name": "StartPosition",
+    "id": -1
+  },
+  {
+    "type": "tree-1",
+    "x": 24.800003,
+    "y": -220.55,
+    "rot": 0,
+    "name": "Plant-2 (12)",
+    "id": -1
+  },
+  {
+    "type": "tree-1",
+    "x": 116.8,
+    "y": -146.55,
+    "rot": 0,
+    "name": "Plant-2 (10)",
+    "id": -1
+  },
+  {
+    "type": "road-2",
+    "x": 184.3,
+    "y": -186.7,
+    "rot": -90,
+    "name": "Road-2 (3)",
+    "id": -1
+  },
+  {
+    "type": "road-1",
+    "x": 24.44999,
+    "y": 213.10004,
+    "rot": 90,
+    "name": "Road-1 (17)",
+    "id": -1
+  },
+  {
+    "type": "road-2",
+    "x": 104.40002,
+    "y": 53.200035,
+    "rot": 0,
+    "name": "Road-2",
+    "id": -1
+  },
+  {
+    "type": "road-1",
+    "x": 184.3,
+    "y": -106.74999,
+    "rot": 0,
+    "name": "Road-1",
+    "id": -1
+  }
+]

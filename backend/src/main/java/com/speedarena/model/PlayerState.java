@@ -78,6 +78,11 @@ public class PlayerState {
     /** Tracks if player has crossed the mid-checkpoint (prevents lap cheating) */
     private boolean passedCheckpoint;
 
+    /**
+     * Next forest sector id required (1..16), or 17 when all sectors cleared and finish may count.
+     */
+    private int lapNextSectorId;
+
     // ─── Input & Timing ─────────────────────────────────────────────────────────
 
     /**
@@ -103,6 +108,7 @@ public class PlayerState {
         this.isFinished = false;
         this.finishPosition = 0;
         this.passedCheckpoint = false;
+        this.lapNextSectorId = 1;
         this.speed = 0;
         this.velocityX = 0;
         this.velocityY = 0;
@@ -148,6 +154,7 @@ public class PlayerState {
         copy.finishPosition = this.finishPosition;
         copy.finishTime = this.finishTime;
         copy.passedCheckpoint = this.passedCheckpoint;
+        copy.lapNextSectorId = this.lapNextSectorId;
         copy.lastInputTimestamp = this.lastInputTimestamp;
         copy.serverTimestamp = this.serverTimestamp;
         copy.inputSequence = this.inputSequence;
@@ -200,6 +207,9 @@ public class PlayerState {
 
     public boolean isPassedCheckpoint() { return passedCheckpoint; }
     public void setPassedCheckpoint(boolean passedCheckpoint) { this.passedCheckpoint = passedCheckpoint; }
+
+    public int getLapNextSectorId() { return lapNextSectorId; }
+    public void setLapNextSectorId(int lapNextSectorId) { this.lapNextSectorId = lapNextSectorId; }
 
     public long getLastInputTimestamp() { return lastInputTimestamp; }
     public void setLastInputTimestamp(long lastInputTimestamp) { this.lastInputTimestamp = lastInputTimestamp; }

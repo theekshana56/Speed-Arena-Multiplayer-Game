@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { clearNetworkPlayerId } from "../session/playerIdentity.js";
 
 const CARS = [
   { id: "red",    label: "VIPER",   color: "#ff3333", accent: "#ff6666", speed: 95, handling: 60, boost: 80 },
@@ -150,6 +151,7 @@ export default function GameHomePage() {
     sessionStorage.removeItem("token");
     sessionStorage.removeItem("username");
     sessionStorage.removeItem("playerName");
+    clearNetworkPlayerId();
     setAuthedUser(null);
   };
 

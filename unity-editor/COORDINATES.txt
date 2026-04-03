@@ -1,0 +1,11 @@
+World coordinates for Speed Arena multiplayer (must stay consistent):
+
+1) Track JSON (Resources/track_forest.json) uses layout units.
+2) Frontend GameCanvas uses world px = json * FOREST_SCALE (20).
+3) Unity TrackLayoutImporter (unity-editor/Assets/TopDownRace/Editor/TrackLayoutImporter.cs) places pieces at:
+     x world = item.x * 20
+     y world = -item.y * 20
+   (same horizontal scale as the web client; Y flipped like the importer already did.)
+4) NetworkBridge publishes Transform.position (x,y) and eulerAngles.z in degrees — same as STOMP SHA_CarState.angle.
+
+If an older Unity scene used unscaled json units, re-run TopDownRace/Import Track From JSON or rescale the scene root.
