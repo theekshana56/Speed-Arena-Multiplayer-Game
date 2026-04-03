@@ -421,15 +421,40 @@ export default function RacePage() {
       const totalTime = (finishTime - currentStartTime) / 1000;
       const finalTopSpeed = topSpeedRef.current;
       const currentName = sessionStorage.getItem("playerName") || sessionStorage.getItem("username") || "PLAYER";
+
+      const numericPlayerId = (() => {
+        // Backend expects an Integer `playerId`. Our websocket `playerId` is a string.
+        // Hash it deterministically so leaderboard shows stable identities.
+        const s = String(playerId || "");
+        let h = 0;
+        for (let i = 0; i < s.length; i++) {
+          h = (h * 31 + s.charCodeAt(i)) >>> 0;
+        }
+        return h % 1000000000;
+      })();
+
+      const numericRoomId = (() => {
+        const s = String(roomId || "");
+        const m = s.match(/\d+/);
+        return m ? Number(m[0]) : 1;
+      })();
       
-      const allFinishers = Object.values(cars)
-          .filter(c => c.status === "FINISHED" && c.totalTime > 0)
-          .sort((a,b) => (a.totalTime || Infinity) - (b.totalTime || Infinity));
-      
-      let rank = allFinishers.findIndex(c => c.playerId === playerId) + 1;
+      // Backend does not reliably fill `totalTime` in realtime updates.
+      // Prefer finishTime (epoch ms) if present; otherwise fall back to timestamp.
+      const finishersSorted = Object.values(cars)
+          .filter(c => c?.status === "FINISHED")
+          .sort((a, b) => {
+            const af = (a.finishTime ?? a.timestamp ?? 0);
+            const bf = (b.finishTime ?? b.timestamp ?? 0);
+            // Both may be 0 early; keep deterministic order by playerId.
+            if (!af && !bf) return String(a.playerId).localeCompare(String(b.playerId));
+            return af - bf;
+          });
+
+      let rank = finishersSorted.findIndex(c => c.playerId === playerId) + 1;
       
       if (rank <= 0) {
-          rank = (winner === playerId) ? 1 : allFinishers.length + 1;
+          rank = (winner === playerId) ? 1 : finishersSorted.length + 1;
       }
 
       const stats = {
@@ -451,9 +476,9 @@ export default function RacePage() {
 
       const saveResult = async () => {
         const payload = {
-          playerId: Math.floor(Math.random() * 10000),
+          playerId: numericPlayerId,
           playerName: currentName,
-          roomId: 1,
+          roomId: numericRoomId,
           position: rank,
           totalTime: totalTime,
           topSpeed: finalTopSpeed,
@@ -468,6 +493,8 @@ export default function RacePage() {
             headers,
             body: JSON.stringify(payload)
           });
+          // After saving, show the leaderboard immediately.
+          navigate("/leaderboard");
         } catch (err) {
           console.error(">>> ERROR SAVING RESULT:", err);
         }
