@@ -1,0 +1,51 @@
+4-player Unity WebGL multiplayer (replace 3 NPC rivals with real players)
+
+Canonical script paths in this repo:
+  unity-editor/Assets/TopDownRace/Scripts/NetworkBridge.cs
+  unity-editor/Assets/TopDownRace/Scripts/DisableNpcRivalsInMultiplayer.cs
+  unity-editor/Assets/TopDownRace/Scripts/DisableNpcRivalSpawningInMultiplayer.cs
+  unity-editor/Assets/TopDownRace/Scripts/DisableTrackSelectorInMultiplayer.cs
+  unity-editor/Assets/Plugins/WebGL/SpeedArenaWebBridge.jslib
+
+Merge unity-editor/Assets/TopDownRace and unity-editor/Assets/Plugins into your Unity project's Assets/.
+
+You already have:
+- NetworkBridge on a scene object (Awake renames it to SpeedArenaNetBridge for React SendMessage)
+- Local Player assigned (your moving car transform)
+
+Do this next:
+
+1) Remote Car Prefab (so you can see other players)
+   - In Unity Project window: Assets/TopDownRace/Prefabs (or your car prefab folder)
+   - Pick a car prefab you want to represent other players
+   - Drag it into: NetworkBridge -> Remote Car Prefab
+   - If left empty, NetworkBridge still spawns a visible placeholder (white sprite, tinted by carColor) so other drivers appear on the grid; assign a real prefab for proper art.
+
+2) Disable old NPC rivals in multiplayer
+   - Add DisableNpcRivalsInMultiplayer, DisableNpcRivalSpawningInMultiplayer on the same GameObject as GameControl (or any always-active object)
+   - Ensure your NPC rivals are tagged "Rival" OR have a script named `Rivals`
+   - Leave deactivateRivals = true on DisableNpcRivalsInMultiplayer
+
+3) Hide in-game track selector (1/2/3)
+   - Add DisableTrackSelectorInMultiplayer
+   - If the UI still shows, add substrings from your Hierarchy to Extra UI Name Hints / Extra Script Name Hints on that component, or disable the panel manually in the Hierarchy
+
+4) Build WebGL and copy artifacts
+   - Build WebGL from Unity
+   - Run: unity-editor\copy-webgl-to-frontend.ps1 -UnityWebGlBuildFolder "YOUR_UNITY_OUTPUT_FOLDER"
+   - Or manually copy Build/* into frontend/public/unity-build/
+
+5) Test (4 real players)
+   - Start backend (Spring) and frontend (Vite)
+   - Open 4 browsers/tabs:
+       Each tab uses a different playerName (so playerId differs)
+       Same roomId
+   - In Unity view:
+       You drive your local car
+       The other 3 cars should appear and move from network updates (no NPC AI)
+
+If you see duplicate cars:
+- Your old GameControl may still be spawning rivals; ensure DisableNpcRivalSpawningInMultiplayer is active.
+- Or set your old rival prefab instances inactive when multiplayer mode is enabled.
+
+See unity-editor/README.md and WEBGL_COPY_INSTRUCTIONS.md.

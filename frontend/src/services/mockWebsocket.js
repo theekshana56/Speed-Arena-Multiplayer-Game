@@ -28,14 +28,21 @@
  * ws.send('/app/car.move', inputMessage);
  */
 
+import trackForest from '../game/levels/track_forest.json';
 import {
   updateCarPhysics,
   handleCollision,
   createCarState,
   updateLapTracking,
+  getStartPositionsFromLayout,
   STARTING_POSITIONS,
   LAP_CONFIG,
 } from '../game/carPhysics';
+import {
+  getSectorTargetWorld,
+  toWorldX,
+  toWorldY,
+} from '../game/track/trackGeometry.js';
 
 // ─── Mock Server State ──────────────────────────────────────────────────────
 
@@ -44,8 +51,9 @@ import {
  * In production, this would be managed by Spring Boot.
  */
 class MockServerState {
-  constructor(roomId) {
+  constructor(roomId, trackLayout = []) {
     this.roomId = roomId;
+    this.trackLayout = trackLayout;
     this.players = {};
     this.aiPlayers = {};
     this.raceStarted = false;
@@ -59,9 +67,16 @@ class MockServerState {
 
   addPlayer(playerId, isAI = false) {
     const index = Object.keys(this.players).length;
-    const pos = STARTING_POSITIONS[Math.min(index, STARTING_POSITIONS.length - 1)];
+    const slots = getStartPositionsFromLayout(this.trackLayout);
+    let spawn;
+    if (slots.length > 0) {
+      spawn = slots[Math.min(index, slots.length - 1)];
+    } else {
+      const p = STARTING_POSITIONS[Math.min(index, STARTING_POSITIONS.length - 1)];
+      spawn = { x: p.x, y: p.y, angle: p.angle };
+    }
 
-    const player = createCarState(playerId, pos.x, pos.y, pos.angle);
+    const player = createCarState(playerId, spawn);
     player.isAI = isAI;
     player.carColor = isAI ? '#ff6b6b' : '#00ff00';
     player.passedCheckpoint = false;
@@ -75,7 +90,7 @@ class MockServerState {
 
     if (isAI) {
       this.aiPlayers[playerId] = {
-        targetAngle: pos.angle,
+        targetAngle: spawn.angle,
         updateTimer: 0,
       };
     }
@@ -143,7 +158,7 @@ export class MockWebSocketService {
     // Simulate connection delay
     setTimeout(() => {
       this.connected = true;
-      this.serverState = new MockServerState(this.roomId);
+      this.serverState = new MockServerState(this.roomId, trackForest);
 
       // Add local player
       this.serverState.addPlayer(this.playerId, false);
@@ -278,11 +293,12 @@ export class MockWebSocketService {
       brake: message.brake,
       turnLeft: message.turnLeft,
       turnRight: message.turnRight,
+      handbrake: !!message.handbrake,
     };
 
     if (this.serverState.raceStarted) {
       updateCarPhysics(player, input, deltaTime);
-      handleCollision(player);
+      handleCollision(player, this.serverState.trackLayout);
     }
 
     // Update server state timestamp
@@ -335,17 +351,28 @@ export class MockWebSocketService {
     console.log('[MockWS] Resetting race...');
 
     // Reset all players to starting positions
+    const slots = getStartPositionsFromLayout(this.serverState.trackLayout);
     let index = 0;
     Object.values(this.serverState.players).forEach((player) => {
-      const pos = STARTING_POSITIONS[Math.min(index, STARTING_POSITIONS.length - 1)];
-      player.x = pos.x;
-      player.y = pos.y;
-      player.angle = pos.angle;
+      let spawn;
+      if (slots.length > 0) {
+        spawn = slots[Math.min(index, slots.length - 1)];
+      } else {
+        const p = STARTING_POSITIONS[Math.min(index, STARTING_POSITIONS.length - 1)];
+        spawn = { x: p.x, y: p.y, angle: p.angle };
+      }
+      player.x = spawn.x;
+      player.y = spawn.y;
+      player.angle = spawn.angle;
       player.speed = 0;
       player.velocityX = 0;
       player.velocityY = 0;
       player.currentLap = 0;
       player.passedCheckpoint = false;
+      player.lapNextSectorId = 1;
+      player.lapFinishCooldown = false;
+      player._lapPrevX = undefined;
+      player._lapPrevY = undefined;
       player.isFinished = false;
       player.finishTime = null;
       player.finishPosition = null;
@@ -426,7 +453,7 @@ export class MockWebSocketService {
         this.updateAI(player, ai, deltaTime);
 
         // Update lap tracking for AI
-        const lapEvent = updateLapTracking(player, this.serverState.maxLaps);
+        const lapEvent = updateLapTracking(player, this.serverState.maxLaps, this.serverState.trackLayout);
         if (lapEvent === 'race_finish') {
           player.raceTime = Date.now() - this.serverState.startTime;
           this.serverState.finishedPlayers.push(playerId);
@@ -460,41 +487,23 @@ export class MockWebSocketService {
    */
   updateAI(player, ai, deltaTime) {
     const { x, y, angle } = player;
+    const tl = this.serverState.trackLayout;
 
-    // Initialize AI state if needed
-    if (ai.currentWaypointIndex === undefined) {
-      ai.currentWaypointIndex = 0;
+    let targetWaypoint = null;
+    if (player.lapNextSectorId >= 17) {
+      const fin = tl.find((i) => i.type === 'finish-line-1');
+      if (fin) {
+        targetWaypoint = { x: toWorldX(fin.x), y: toWorldY(fin.y) };
+      }
+    }
+    if (!targetWaypoint) {
+      const sid = Math.min(Math.max(1, player.lapNextSectorId || 1), 16);
+      targetWaypoint = getSectorTargetWorld(tl, sid);
+    }
+    if (!targetWaypoint) {
+      targetWaypoint = { x: x + 100, y: y };
     }
 
-    // Oval track waypoints (follow the ellipse path)
-    const centerX = 600;
-    const centerY = 400;
-    const radiusX = 400; // Between inner and outer
-    const radiusY = 240;
-
-    // Create 12 waypoints around the oval
-    const numWaypoints = 12;
-    const waypoints = [];
-    for (let i = 0; i < numWaypoints; i++) {
-      const theta = (i / numWaypoints) * Math.PI * 2 - Math.PI / 2; // Start from top
-      waypoints.push({
-        x: centerX + radiusX * Math.cos(theta),
-        y: centerY + radiusY * Math.sin(theta),
-      });
-    }
-
-    // Get current target waypoint
-    const targetWaypoint = waypoints[ai.currentWaypointIndex];
-
-    // Calculate distance to waypoint
-    const distToWaypoint = Math.hypot(targetWaypoint.x - x, targetWaypoint.y - y);
-
-    // If close to waypoint, advance to next
-    if (distToWaypoint < 80) {
-      ai.currentWaypointIndex = (ai.currentWaypointIndex + 1) % numWaypoints;
-    }
-
-    // Calculate steering angle to target
     const targetAngle = Math.atan2(targetWaypoint.y - y, targetWaypoint.x - x);
     let angleDiff = targetAngle - angle;
 
@@ -514,28 +523,23 @@ export class MockWebSocketService {
       handbrake: false,
     };
 
-    // Apply physics
     updateCarPhysics(player, input, deltaTime);
 
-    // Handle collision and damage
-    const collision = handleCollision(player);
+    const collision = handleCollision(player, tl);
     if (collision.collided && collision.damage > 0) {
       if (!player.health) player.health = 100;
       player.health -= collision.damage;
 
-      // Respawn AI if health depleted
       if (player.health <= 0) {
         player.health = 100;
-        // Find nearest waypoint for respawn
-        const respawnWp = waypoints[ai.currentWaypointIndex];
-        player.x = respawnWp.x;
-        player.y = respawnWp.y;
+        const slots = getStartPositionsFromLayout(tl);
+        const rp = slots[0] || { ...targetWaypoint, angle: targetAngle };
+        player.x = rp.x;
+        player.y = rp.y;
         player.speed = 0;
         player.velocityX = 0;
         player.velocityY = 0;
-        // Set angle to face next waypoint
-        const nextWp = waypoints[(ai.currentWaypointIndex + 1) % numWaypoints];
-        player.angle = Math.atan2(nextWp.y - respawnWp.y, nextWp.x - respawnWp.x);
+        player.angle = typeof rp.angle === 'number' ? rp.angle : targetAngle;
       }
     }
   }

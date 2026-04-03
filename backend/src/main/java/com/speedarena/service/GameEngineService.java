@@ -5,6 +5,7 @@ import com.speedarena.engine.CarPhysics;
 import com.speedarena.engine.CollisionDetector;
 import com.speedarena.engine.LapTracker;
 import com.speedarena.engine.WinnerDetector;
+import com.speedarena.track.TrackLayoutService;
 import com.speedarena.model.GameState;
 import com.speedarena.model.PlayerState;
 import org.slf4j.Logger;
@@ -45,6 +46,7 @@ public class GameEngineService {
     private final CollisionDetector collisionDetector;
     private final LapTracker lapTracker;
     private final WinnerDetector winnerDetector;
+    private final TrackLayoutService trackLayoutService;
 
     // ─── State ──────────────────────────────────────────────────────────────────
 
@@ -74,11 +76,13 @@ public class GameEngineService {
     public GameEngineService(CarPhysics carPhysics,
                             CollisionDetector collisionDetector,
                             LapTracker lapTracker,
-                            WinnerDetector winnerDetector) {
+                            WinnerDetector winnerDetector,
+                            TrackLayoutService trackLayoutService) {
         this.carPhysics = carPhysics;
         this.collisionDetector = collisionDetector;
         this.lapTracker = lapTracker;
         this.winnerDetector = winnerDetector;
+        this.trackLayoutService = trackLayoutService;
 
         logger.info("GameEngineService initialized");
     }
@@ -157,7 +161,8 @@ public class GameEngineService {
 
         // Get starting position based on player count
         int playerIndex = gameState.getPlayerCount();
-        double[] startPos = STARTING_POSITIONS[Math.min(playerIndex, STARTING_POSITIONS.length - 1)];
+        double[] fallback = STARTING_POSITIONS[Math.min(playerIndex, STARTING_POSITIONS.length - 1)];
+        double[] startPos = trackLayoutService.getStartSlotOrDefault(playerIndex, fallback);
 
         PlayerState player = new PlayerState(playerId, roomId, startPos[0], startPos[1], startPos[2]);
         player.setPlayerName(playerName);
@@ -249,6 +254,7 @@ public class GameEngineService {
             input.isBrake(),
             input.isTurnLeft(),
             input.isTurnRight(),
+            input.isHandbrake(),
             deltaTime
         );
 
@@ -349,7 +355,8 @@ public class GameEngineService {
         // Reset all players to starting positions
         int index = 0;
         for (PlayerState player : gameState.getAllPlayers()) {
-            double[] startPos = STARTING_POSITIONS[Math.min(index, STARTING_POSITIONS.length - 1)];
+            double[] fallback = STARTING_POSITIONS[Math.min(index, STARTING_POSITIONS.length - 1)];
+            double[] startPos = trackLayoutService.getStartSlotOrDefault(index, fallback);
             player.setX(startPos[0]);
             player.setY(startPos[1]);
             player.setAngle(startPos[2]);
@@ -361,6 +368,7 @@ public class GameEngineService {
             player.setFinishPosition(0);
             player.setFinishTime(0);
             player.setPassedCheckpoint(false);
+            player.setLapNextSectorId(1);
             index++;
         }
 
@@ -438,9 +446,6 @@ public class GameEngineService {
             gameState.setTrackHeight(height);
         }
 
-        collisionDetector.configureForCanvasSize(width, height);
-        lapTracker.configureForTrack(50, height - 50, 50, width - 50);
-
-        logger.info("Configured track for room {} with size {}x{}", roomId, width, height);
+        logger.info("Configured track for room {} with size {}x{} (forest layout from classpath)", roomId, width, height);
     }
 }

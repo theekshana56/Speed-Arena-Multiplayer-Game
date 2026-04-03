@@ -21,6 +21,9 @@ public class SHA_CarState {
     /** Car display color chosen by the player (e.g. "red", "blue") */
     private String carColor;
 
+    /** Start grid index 0–3 (same as lobby slot order). Echoed in game-state for Unity / HUD. */
+    private int gridSlot;
+
     // ─── Position & Movement ─────────────────────────────────────────────────
 
     /** Current X position on the 2D canvas */
@@ -105,6 +108,9 @@ public class SHA_CarState {
     public String getCarColor() { return carColor; }
     public void setCarColor(String carColor) { this.carColor = carColor; }
 
+    public int getGridSlot() { return gridSlot; }
+    public void setGridSlot(int gridSlot) { this.gridSlot = gridSlot; }
+
     public double getX() { return x; }
     public void setX(double x) { this.x = x; }
 
@@ -137,6 +143,7 @@ public class SHA_CarState {
         return "SHA_CarState{" +
                 "playerId='" + playerId + '\'' +
                 ", roomId='" + roomId + '\'' +
+                ", gridSlot=" + gridSlot +
                 ", x=" + x + ", y=" + y +
                 ", angle=" + angle + ", speed=" + speed +
                 ", laps=" + lapsCompleted +

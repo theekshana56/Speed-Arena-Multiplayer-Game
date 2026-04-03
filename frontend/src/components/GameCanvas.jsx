@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { useGameLoop } from '../hooks/useGameLoop';
 import { useInput } from '../game/inputHandler';
 import {
@@ -9,152 +9,172 @@ import {
   createCarState,
   interpolateCarState,
   getDisplaySpeed,
-  getSpeedPercentage,
   updateLapTracking,
-  TRACK_CONFIG,
+  isOnRoad,
   MAX_HEALTH,
   TOP_SPEED,
-  STARTING_POSITIONS,
   LAP_CONFIG,
 } from '../game/carPhysics';
+import {
+  buildPolylineGameLayoutForMap,
+  getMapTrackPreset,
+  toWorldVerts,
+  getBoundingBox,
+} from '../game/track/polylineTrack.js';
 
-const CAR_COLORS = { 
-  red: "#ff3333", 
-  blue: "#00a2ff", 
-  green: "#00e87a", 
-  yellow: "#ffd520" 
+const CAR_COLORS = {
+  red: '#ff3333',
+  blue: '#00a2ff',
+  green: '#00e87a',
+  yellow: '#ffd520',
 };
 
-/**
- * GameCanvas - High-performance HTML5 Canvas racing game component.
- *
- * Features:
- * ─────────────────────────────────────────────────────────────────────────────
- * 1. 60 FPS rendering with requestAnimationFrame
- * 2. Client-side prediction for local player
- * 3. Entity interpolation for other players (smooth movement)
- * 4. Oval track with ellipse collision detection
- * 5. Damage system with health bar
- * 6. Respawn when health reaches zero
- * 7. Handbrake/drift mechanics (Spacebar)
- *
- * Props:
- * @param {string} playerId - Current player's ID
- * @param {string} roomId - Current room ID
- * @param {Object} serverState - Latest state from server (other players)
- * @param {Function} onSendInput - Callback to send input to server
- * @param {boolean} raceStarted - Whether the race has started
- * @param {number} countdown - Countdown value (3, 2, 1, 0)
- * @param {number} width - Canvas width (default 1200)
- * @param {number} height - Canvas height (default 800)
- */
+/** World px: hide far start-grid decals while racing */
+const START_POS_CULL_DIST_SQ = 4500 * 4500;
+
+function trackPieceDepth(type) {
+  if (type === 'road-1' || type === 'road-2' || type === 'finish-line-1' || type === 'start-pos') return 1;
+  if (type === 'bush-1') return 2;
+  if (type === 'tree-1') return 3;
+  return 1;
+}
+
 export default function GameCanvas({
   playerId = 'player_1',
   roomId = 'room_1',
+  mapId = 'forest',
   serverState = {},
   onSendInput,
   raceStarted = false,
   countdown = 0,
   width = 1200,
   height = 800,
-  onRaceReset,
   onLapChange,
   onRaceFinish,
 }) {
-  // Canvas ref
   const canvasRef = useRef(null);
+  const localPlayerRef = useRef(createCarState(playerId));
 
-  // Local player state (client-side prediction)
-  const startPos = STARTING_POSITIONS[0];
-  const localPlayerRef = useRef(createCarState(playerId, startPos.x, startPos.y, startPos.angle));
+  const trackPreset = useMemo(() => getMapTrackPreset(mapId), [mapId]);
+  const trackLayout = useMemo(() => buildPolylineGameLayoutForMap(mapId), [mapId]);
+  const worldCenterline = useMemo(() => toWorldVerts(trackPreset.verts), [trackPreset]);
+  const worldBbox = useMemo(() => getBoundingBox(worldCenterline), [worldCenterline]);
 
-  // Respawn message state
+  const mapTheme = useMemo(() => {
+    const m = (mapId || 'forest').toString().toLowerCase();
+    if (m === 'desert') return { bg: '#141008', ground: '#6b5420' };
+    if (m === 'snow') return { bg: '#0a0e14', ground: '#2a3540' };
+    return { bg: '#0a0f0a', ground: '#143214' };
+  }, [mapId]);
+
+  const [assets, setAssets] = useState({
+    loaded: false,
+    sprites: {},
+  });
+
+  useEffect(() => {
+    const spriteNames = [
+      'car-1',
+      'car-2',
+      'car-shadow-1',
+      'road-1',
+      'road-bend-1',
+      'finish-line-1',
+      'ground',
+      'start-position-mark-1',
+    ];
+    let loadedCount = 0;
+    const totalCount = spriteNames.length;
+    const loadedSprites = {};
+
+    spriteNames.forEach((name) => {
+      const img = new Image();
+      img.src = `/src/assets/game/${name}.png`;
+      img.onload = () => {
+        loadedSprites[name] = img;
+        loadedCount++;
+        if (loadedCount === totalCount) {
+          setAssets({ loaded: true, sprites: loadedSprites });
+        }
+      };
+      img.onerror = () => {
+        console.warn(`Failed to load sprite: ${name}`);
+        loadedCount++;
+        if (loadedCount === totalCount) {
+          setAssets({ loaded: true, sprites: loadedSprites });
+        }
+      };
+    });
+  }, []);
+
   const [respawnMessage, setRespawnMessage] = useState(null);
-
-  // Race finish state
   const [raceFinished, setRaceFinished] = useState(false);
   const [finishData, setFinishData] = useState(null);
-
-  // Track race start time
   const raceStartTimeRef = useRef(0);
-
-  // Other players' states with interpolation data
   const otherPlayersRef = useRef({});
-
-  // Last input sent timestamp (for rate limiting)
   const lastInputSentRef = useRef(0);
-  const INPUT_SEND_RATE = 1000 / 30; // 30 Hz input rate
+  const INPUT_SEND_RATE = 1000 / 30;
 
-  // Track last server state timestamp for interpolation
-  const serverTimestampRef = useRef(Date.now());
+  const FOREST_SCALE = 20;
 
-  // Reset local player when race resets
   const resetLocalPlayer = useCallback(() => {
-    const pos = STARTING_POSITIONS[0];
+    if (trackLayout.length === 0) return;
+
+    const startItems = trackLayout.filter((i) => i.type === 'start-pos');
+    const pos = startItems.length > 0 ? startItems[0] : { x: 0, y: 0, rot: 0 };
+
     const player = localPlayerRef.current;
-    player.x = pos.x;
-    player.y = pos.y;
-    player.angle = pos.angle;
+    player.x = pos.x * FOREST_SCALE;
+    player.y = pos.y * FOREST_SCALE;
+    player.angle = (pos.rot || 0) * (Math.PI / 180);
     player.speed = 0;
     player.velocityX = 0;
     player.velocityY = 0;
     player.currentLap = 0;
     player.passedCheckpoint = false;
+    player.lapNextSectorId = 1;
+    player.lapFinishCooldown = false;
+    player._lapPrevX = undefined;
+    player._lapPrevY = undefined;
     player.isFinished = false;
-    player.finishTime = null;
-    player.finishPosition = null;
-    player.raceTime = null;
     player.health = MAX_HEALTH;
+
     setRaceFinished(false);
     setFinishData(null);
-  }, []);
+  }, [trackLayout]);
 
-  // Listen for race reset
   useEffect(() => {
-    if (!raceStarted && countdown === 0) {
+    if (!raceStarted && countdown === 0 && trackLayout.length > 0) {
       resetLocalPlayer();
     }
-  }, [raceStarted, countdown, resetLocalPlayer]);
+  }, [raceStarted, countdown, resetLocalPlayer, trackLayout]);
 
-  // Track race start time
   useEffect(() => {
     if (raceStarted && raceStartTimeRef.current === 0) {
       raceStartTimeRef.current = Date.now();
-    }
-    if (!raceStarted) {
+    } else if (!raceStarted) {
       raceStartTimeRef.current = 0;
     }
   }, [raceStarted]);
 
-  // Input handling (with handbrake support)
-  const { input, sequence, hasInput } = useInput({
+  const { input } = useInput({
     enabled: raceStarted && !raceFinished,
     onInputChange: (newInput, seq) => {
-      // Send input to server when it changes
-      if (onSendInput) {
-        sendInput(newInput, seq);
-      }
+      if (onSendInput) sendInput(newInput, seq);
     },
   });
 
-  // Send input to server (rate limited)
   const sendInput = useCallback(
     (inputState, seq) => {
       const now = Date.now();
-      if (now - lastInputSentRef.current < INPUT_SEND_RATE && !inputState.accelerate) {
-        return; // Rate limit non-critical inputs
-      }
+      if (now - lastInputSentRef.current < INPUT_SEND_RATE && !inputState.accelerate) return;
       lastInputSentRef.current = now;
 
       const localPlayer = localPlayerRef.current;
-      const message = {
+      onSendInput({
         playerId,
         roomId,
-        accelerate: inputState.accelerate,
-        brake: inputState.brake,
-        turnLeft: inputState.turnLeft,
-        turnRight: inputState.turnRight,
-        handbrake: inputState.handbrake,
+        ...inputState,
         timestamp: now,
         inputSequence: seq,
         deltaTimeMs: 16,
@@ -162,738 +182,311 @@ export default function GameCanvas({
         clientY: localPlayer.y,
         clientAngle: localPlayer.angle,
         clientSpeed: localPlayer.speed,
-      };
-
-      onSendInput(message);
+      });
     },
-    [playerId, roomId, onSendInput]
+    [playerId, roomId, onSendInput],
   );
 
-  // Update other players' interpolation targets when server state changes
   useEffect(() => {
     if (!serverState) return;
-
     const now = Date.now();
-    serverTimestampRef.current = now;
-
     Object.entries(serverState).forEach(([id, state]) => {
-      // Defensive check: ignore null or invalid states
-      if (!state || id === playerId) {
-        return;
-      }
-
+      if (!state || id === playerId) return;
       const prevData = otherPlayersRef.current[id];
-
       if (!prevData) {
-        // New player - initialize
         otherPlayersRef.current[id] = {
           current: { ...state },
           target: { ...state },
-          lastUpdate: now,
           interpolationStart: now,
         };
       } else {
-        // Existing player - set new interpolation target
         otherPlayersRef.current[id] = {
           current: { ...prevData.current },
           target: { ...state },
-          lastUpdate: now,
           interpolationStart: now,
         };
       }
     });
-
-    // Remove disconnected players
     Object.keys(otherPlayersRef.current).forEach((id) => {
-      if (!serverState[id]) {
-        delete otherPlayersRef.current[id];
-      }
+      if (!serverState[id]) delete otherPlayersRef.current[id];
     });
   }, [serverState, playerId]);
 
-  // Main game loop
   useGameLoop(
     (deltaTime) => {
       const canvas = canvasRef.current;
       if (!canvas) return;
-
       const ctx = canvas.getContext('2d');
-
-      // ─── Update Physics ─────────────────────────────────────────────────
 
       if (raceStarted) {
         const localPlayer = localPlayerRef.current;
-
-        // Update local player with client-side prediction
         updateCarPhysics(localPlayer, input, deltaTime);
 
-        // Handle collision and damage
-        const collisionResult = handleCollision(localPlayer);
-        if (collisionResult.collided && collisionResult.damage > 0) {
-          const needsRespawn = applyDamage(localPlayer, collisionResult.damage);
-
-          if (needsRespawn) {
-            // Respawn the car
-            const respawnPoint = respawnCar(localPlayer);
-            setRespawnMessage('RESPAWNING...');
-            setTimeout(() => setRespawnMessage(null), 1500);
+        const collision = handleCollision(localPlayer, trackLayout);
+        if (collision.collided) {
+          if (applyDamage(localPlayer, collision.damage)) {
+            respawnCar(localPlayer, trackLayout);
           }
         }
 
-        // Update lap tracking for local player (only if not finished)
         if (!localPlayer.isFinished) {
-          const lapEvent = updateLapTracking(localPlayer, LAP_CONFIG.totalLaps);
-          
-          if (lapEvent === 'lap_complete') {
-            if (onLapChange) onLapChange(localPlayer.currentLap);
-          }
-          
+          const lapEvent = updateLapTracking(localPlayer, LAP_CONFIG.totalLaps, trackLayout);
+          if (lapEvent === 'lap_complete' && onLapChange) onLapChange(localPlayer.currentLap);
           if (lapEvent === 'race_finish') {
             const raceTime = Date.now() - raceStartTimeRef.current;
-            localPlayer.raceTime = raceTime;
-            
-            // Calculate position based on finished players
             const position = calculateFinalPosition();
-            localPlayer.finishPosition = position;
-            
             setRaceFinished(true);
-            setFinishData({
-              position,
-              raceTime,
-              laps: localPlayer.currentLap,
-              playerId: localPlayer.id,
-            });
-
-            if (onRaceFinish) {
-              onRaceFinish({
-                position,
-                raceTime,
-                laps: localPlayer.currentLap,
-              });
-            }
+            setFinishData({ position, raceTime, laps: localPlayer.currentLap, playerId });
+            if (onRaceFinish)
+              onRaceFinish({ position, raceTime, laps: localPlayer.currentLap });
           }
         }
 
-        // Interpolate other players toward their target positions
         const now = Date.now();
-        const INTERPOLATION_DURATION = 100; // ms to reach target
-
-        Object.values(otherPlayersRef.current).forEach((playerData) => {
-          const elapsed = now - playerData.interpolationStart;
-          const t = Math.min(1, elapsed / INTERPOLATION_DURATION);
-
-          const interpolated = interpolateCarState(playerData.current, playerData.target, t);
-
-          playerData.current.x = interpolated.x;
-          playerData.current.y = interpolated.y;
-          playerData.current.angle = interpolated.angle;
-          playerData.current.speed = interpolated.speed;
-          playerData.current.health = interpolated.health;
+        Object.values(otherPlayersRef.current).forEach((p) => {
+          const t = Math.min(1, (now - p.interpolationStart) / 100);
+          const interp = interpolateCarState(p.current, p.target, t);
+          Object.assign(p.current, interp);
         });
       }
 
-      // ─── Render ─────────────────────────────────────────────────────────
-
       render(ctx, canvas.width, canvas.height);
     },
-    { paused: false }
+    { paused: false },
   );
 
-  // Render function
-  const render = useCallback(
-    (ctx, w, h) => {
-      // Base dimensions for the coordinate system (matched to 1.5x track size)
-      const BASE_WIDTH = 1020;
-      const BASE_HEIGHT = 705;
+  const render = (ctx, w, h) => {
+    const localPlayer = localPlayerRef.current;
 
-      // Calculate scale to fit the base dimensions into actual canvas
-      // We use Math.min to maintain aspect ratio and center the content
-      const scale = Math.min(w / BASE_WIDTH, h / BASE_HEIGHT);
-      const offsetX = (w - BASE_WIDTH * scale) / 2;
-      const offsetY = (h - BASE_HEIGHT * scale) / 2;
+    ctx.fillStyle = mapTheme.bg;
+    ctx.fillRect(0, 0, w, h);
 
-      // Clear canvas with dark background
-      ctx.fillStyle = '#1a1a2e';
-      ctx.fillRect(0, 0, w, h);
-
-      ctx.save();
-      
-      // Apply transformation for game world
-      ctx.translate(offsetX, offsetY);
-      ctx.scale(scale, scale);
-
-      // Draw oval track
-      drawOvalTrack(ctx);
-
-      // Draw other players first (so local player renders on top)
-      Object.entries(otherPlayersRef.current).forEach(([id, playerData]) => {
-        // Use car color from server state or default
-        const carColor = CAR_COLORS[playerData.target?.carColor] || '#ff6b6b';
-        drawCar(ctx, playerData.current, carColor, id.toUpperCase());
-      });
-
-      // Draw local player
-      const myColor = CAR_COLORS[sessionStorage.getItem('carColor')] || '#00ff00';
-      drawCar(ctx, localPlayerRef.current, myColor, playerId.toUpperCase());
-
-      ctx.restore();
-
-      // Draw HUD (unscaled, anchored to canvas corners)
-      drawHUD(ctx, w, h);
-
-      // Draw respawn message if active
-      if (respawnMessage) {
-        drawRespawnMessage(ctx, w, h, respawnMessage);
-      }
-
-      // Draw race finish overlay if player finished
-      if (raceFinished && finishData) {
-        drawRaceFinish(ctx, w, h, finishData);
-      }
-
-      // Draw countdown if active
-      if (countdown > 0) {
-        drawCountdown(ctx, w, h, countdown);
-      } else if (!raceStarted) {
-        drawStartPrompt(ctx, w, h);
-      }
-    },
-    [playerId, countdown, raceStarted, respawnMessage, raceFinished, finishData]
-  );
-
-  // Draw oval track
-  const drawOvalTrack = (ctx) => {
-    const { centerX, centerY, outerRadiusX, outerRadiusY, innerRadiusX, innerRadiusY } = TRACK_CONFIG;
-
-    // Background (grass)
-    ctx.fillStyle = '#0a1a0a';
-    ctx.fillRect(0, 0, 2000, 2000); // Large enough to cover any canvas
-
-    // Outer boundary (outside grass)
-    ctx.fillStyle = '#1a3d1a';
-    ctx.beginPath();
-    ctx.ellipse(centerX, centerY, outerRadiusX + 30, outerRadiusY + 30, 0, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Track surface (asphalt)
-    ctx.fillStyle = '#151520';
-    ctx.beginPath();
-    ctx.ellipse(centerX, centerY, outerRadiusX, outerRadiusY, 0, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Inner infield (grass)
-    ctx.fillStyle = '#050a10';
-    ctx.beginPath();
-    ctx.ellipse(centerX, centerY, innerRadiusX, innerRadiusY, 0, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Track boundaries (neon lines)
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
-    ctx.lineWidth = 2;
-
-    // Outer boundary line
-    ctx.beginPath();
-    ctx.ellipse(centerX, centerY, outerRadiusX, outerRadiusY, 0, 0, Math.PI * 2);
-    ctx.stroke();
-
-    // Inner boundary line
-    ctx.beginPath();
-    ctx.ellipse(centerX, centerY, innerRadiusX, innerRadiusY, 0, 0, Math.PI * 2);
-    ctx.stroke();
-
-    // Center line (dashed neon line)
-    ctx.strokeStyle = 'rgba(255, 213, 32, 0.2)';
-    ctx.lineWidth = 1;
-    ctx.setLineDash([10, 10]);
-    const centerRadiusX = (outerRadiusX + innerRadiusX) / 2;
-    const centerRadiusY = (outerRadiusY + innerRadiusY) / 2;
-    ctx.beginPath();
-    ctx.ellipse(centerX, centerY, centerRadiusX, centerRadiusY, 0, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.setLineDash([]);
-
-    // Start/Finish line (left side of track)
-    const finishX = centerX - outerRadiusX + 10;
-    const finishY = centerY - 60;
-    const finishWidth = outerRadiusX - innerRadiusX - 20;
-    const finishHeight = 120;
-
-    // Checkered pattern
-    const squareSize = 15;
-    for (let row = 0; row < finishHeight / squareSize; row++) {
-      for (let col = 0; col < finishWidth / squareSize; col++) {
-        ctx.fillStyle = (row + col) % 2 === 0 ? '#ffffff' : '#000000';
-        ctx.fillRect(finishX + col * squareSize, finishY + row * squareSize, squareSize, squareSize);
-      }
+    if (!assets.loaded) {
+      ctx.fillStyle = '#fff';
+      ctx.font = '24px Arial';
+      ctx.textAlign = 'center';
+      ctx.fillText('LOADING...', w / 2, h / 2);
+      return;
     }
 
-    // Start/Finish text
-    ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 14px Arial';
-    ctx.textAlign = 'center';
-    ctx.fillText('START/FINISH', finishX + finishWidth / 2, finishY - 10);
-    ctx.textAlign = 'left';
+    const hasRoads = trackLayout.some((i) => i.type === 'road-1' || i.type === 'road-2');
+    if (!hasRoads) {
+      ctx.fillStyle = '#fff';
+      ctx.fillText('NO TRACK', w / 2, h / 2);
+      return;
+    }
 
-    // Infield decorations
-    ctx.fillStyle = '#1a4d1a';
-    ctx.beginPath();
-    ctx.ellipse(centerX, centerY, innerRadiusX - 40, innerRadiusY - 40, 0, 0, Math.PI * 2);
-    ctx.fill();
-
-    // "SPEED ARENA" text in center
-    ctx.fillStyle = '#3a6a3a';
-    ctx.font = 'bold 48px Arial';
-    ctx.textAlign = 'center';
-    ctx.fillText('SPEED ARENA', centerX, centerY);
-    ctx.font = '18px Arial';
-    ctx.fillText('OVAL SPEEDWAY', centerX, centerY + 30);
-    ctx.textAlign = 'left';
-  };
-
-  // Draw a car with health indicator
-  const drawCar = (ctx, carState, color, label) => {
-    const { x, y, angle, health = MAX_HEALTH } = carState;
+    const margin = 100;
+    const bw = worldBbox.width + margin * 2;
+    const bh = worldBbox.height + margin * 2;
+    const scale = Math.min(w / bw, h / bh, 1);
+    const cx = (worldBbox.minX + worldBbox.maxX) / 2;
+    const cy = (worldBbox.minY + worldBbox.maxY) / 2;
 
     ctx.save();
+    ctx.translate(w / 2, h / 2);
+    ctx.scale(scale, scale);
+    ctx.translate(-cx, -cy);
 
-    // Move to car position and rotate
-    ctx.translate(x, y);
-    ctx.rotate(angle);
-
-    // Car body dimensions
-    const carWidth = 60;
-    const carHeight = 30;
-
-    // Shadow
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
-    ctx.fillRect(-carWidth / 2 + 3, -carHeight / 2 + 3, carWidth, carHeight);
-
-    // Main body (color based on health)
-    const healthPercent = health / MAX_HEALTH;
-    let carColor = color;
-    if (healthPercent < 0.3) {
-      carColor = '#ff0000'; // Critical - red
-    } else if (healthPercent < 0.6) {
-      carColor = '#ff8800'; // Low - orange
+    const pad = 2000;
+    if (assets.sprites.ground) {
+      const pattern = ctx.createPattern(assets.sprites.ground, 'repeat');
+      ctx.fillStyle = pattern;
+      ctx.fillRect(
+        worldBbox.minX - pad,
+        worldBbox.minY - pad,
+        worldBbox.width + pad * 2,
+        worldBbox.height + pad * 2,
+      );
+    } else {
+      ctx.fillStyle = mapTheme.ground;
+      ctx.fillRect(
+        worldBbox.minX - pad,
+        worldBbox.minY - pad,
+        worldBbox.width + pad * 2,
+        worldBbox.height + pad * 2,
+      );
     }
-    ctx.fillStyle = carColor;
-    ctx.fillRect(-carWidth / 2, -carHeight / 2, carWidth, carHeight);
 
-    // Damage marks (scratches when damaged)
-    if (healthPercent < 0.7) {
-      ctx.strokeStyle = '#333333';
-      ctx.lineWidth = 1;
+    const wx = (it) => (it.x || 0) * FOREST_SCALE;
+    const wy = (it) => (it.y || 0) * FOREST_SCALE;
+
+    const drawOrder = trackLayout
+      .filter((item) => {
+        const t = item.type;
+        if (t === 'checkpoint') return false;
+        if (t === 'start-pos' && raceStarted) {
+          const xw = wx(item);
+          const yw = wy(item);
+          const dx = xw - localPlayer.x;
+          const dy = yw - localPlayer.y;
+          if (dx * dx + dy * dy > START_POS_CULL_DIST_SQ) return false;
+        }
+        return true;
+      })
+      .sort((a, b) => {
+        const da = trackPieceDepth(a.type);
+        const db = trackPieceDepth(b.type);
+        if (da !== db) return da - db;
+        const ay = wy(a);
+        const by = wy(b);
+        if (Math.abs(ay - by) > 1) return ay - by;
+        return wx(a) - wx(b);
+      });
+
+    const SPRITE_SCALE = 2.0;
+
+    drawOrder.forEach((item) => {
+      let assetName = item.type;
+      if (item.type === 'road-2') assetName = 'road-bend-1';
+      if (item.type === 'start-pos') assetName = 'start-position-mark-1';
+
+      const sprite = assets.sprites[assetName];
+      if (!sprite) return;
+      const rot = item.rot ?? item.rotation ?? 0;
+      ctx.save();
+      ctx.translate(item.x * FOREST_SCALE, item.y * FOREST_SCALE);
+      ctx.rotate((rot * Math.PI) / 180);
+      ctx.scale(SPRITE_SCALE, SPRITE_SCALE);
+      ctx.drawImage(sprite, -sprite.width / 2, -sprite.height / 2);
+      ctx.restore();
+    });
+
+    const sl = trackPreset.startLine;
+    const sx1 = sl.p1.x * FOREST_SCALE;
+    const sy1 = sl.p1.y * FOREST_SCALE;
+    const sx2 = sl.p2.x * FOREST_SCALE;
+    const sy2 = sl.p2.y * FOREST_SCALE;
+    const dx = sx2 - sx1;
+    const dy = sy2 - sy1;
+    const segLen = Math.hypot(dx, dy) || 1;
+    const ux = dx / segLen;
+    const uy = dy / segLen;
+    const px = -uy;
+    const py = ux;
+    const stripe = 14;
+    const n = Math.max(1, Math.floor(segLen / stripe));
+    for (let i = 0; i < n; i++) {
+      const t0 = (i / n) * segLen;
+      const t1 = ((i + 1) / n) * segLen;
+      const mid = (i + 0.5) / n;
+      const ox = sx1 + ux * t0;
+      const oy = sy1 + uy * t0;
+      const ox2 = sx1 + ux * t1;
+      const oy2 = sy1 + uy * t1;
+      ctx.fillStyle = i % 2 === 0 ? '#f0f0f0' : '#1a1a1a';
       ctx.beginPath();
-      ctx.moveTo(-carWidth / 4, -carHeight / 4);
-      ctx.lineTo(carWidth / 4, carHeight / 4);
-      ctx.stroke();
+      ctx.moveTo(ox + px * 4, oy + py * 4);
+      ctx.lineTo(ox2 + px * 4, oy2 + py * 4);
+      ctx.lineTo(ox2 - px * 4, oy2 - py * 4);
+      ctx.lineTo(ox - px * 4, oy - py * 4);
+      ctx.closePath();
+      ctx.fill();
     }
-    if (healthPercent < 0.4) {
-      ctx.beginPath();
-      ctx.moveTo(carWidth / 4, -carHeight / 4);
-      ctx.lineTo(-carWidth / 4, carHeight / 4);
-      ctx.stroke();
-    }
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 2 / scale;
+    ctx.beginPath();
+    ctx.moveTo(sx1, sy1);
+    ctx.lineTo(sx2, sy2);
+    ctx.stroke();
 
-    // Windshield
-    ctx.fillStyle = '#333';
-    ctx.fillRect(carWidth / 4, -carHeight / 2 + 2, carWidth / 4, carHeight - 4);
-
-    // Tires
-    ctx.fillStyle = '#222';
-    ctx.fillRect(-carWidth / 2, -carHeight / 2 - 2, 8, 4); // Front left
-    ctx.fillRect(-carWidth / 2, carHeight / 2 - 2, 8, 4); // Rear left
-    ctx.fillRect(carWidth / 2 - 8, -carHeight / 2 - 2, 8, 4); // Front right
-    ctx.fillRect(carWidth / 2 - 8, carHeight / 2 - 2, 8, 4); // Rear right
+    Object.entries(otherPlayersRef.current).forEach(([id, p]) => {
+      drawCar(ctx, p.current, id.toUpperCase(), assets.sprites['car-2']);
+    });
+    drawCar(ctx, localPlayer, playerId.toUpperCase(), assets.sprites['car-1']);
 
     ctx.restore();
 
-    // Player name label
-    ctx.fillStyle = '#ffffff';
-    ctx.font = '10px Arial';
-    ctx.textAlign = 'center';
-    ctx.fillText(label, x, y - 25);
-
-    // Mini health bar above car
-    const barWidth = 30;
-    const barHeight = 4;
-    const barX = x - barWidth / 2;
-    const barY = y - 35;
-
-    // Background
-    ctx.fillStyle = '#333333';
-    ctx.fillRect(barX, barY, barWidth, barHeight);
-
-    // Health fill
-    ctx.fillStyle = healthPercent > 0.5 ? '#00ff00' : healthPercent > 0.25 ? '#ffaa00' : '#ff0000';
-    ctx.fillRect(barX, barY, barWidth * healthPercent, barHeight);
-
-    ctx.textAlign = 'left';
+    drawHUD(ctx, w, h);
+    if (respawnMessage) drawOverlay(ctx, w, h, respawnMessage);
+    if (raceFinished && finishData) drawRaceFinish(ctx, w, h, finishData);
+    if (countdown > 0) drawCountdown(ctx, w, h, countdown);
+    else if (!raceStarted) drawStartPrompt(ctx, w, h);
   };
 
-  // Draw HUD (speedometer, lap counter, health bar)
-  const drawHUD = (ctx, canvasWidth, canvasHeight) => {
-    const localPlayer = localPlayerRef.current;
-    const speed = Math.abs(localPlayer.speed);
-    const displaySpeed = getDisplaySpeed(speed);
-    const speedPercent = getSpeedPercentage(speed);
-    const health = localPlayer.health || MAX_HEALTH;
-    const healthPercent = (health / MAX_HEALTH) * 100;
-
-    // ─── Speedometer (bottom right) ───────────────────────────────────────
-
-    const speedoX = canvasWidth - 160;
-    const speedoY = canvasHeight - 120;
-    const speedoRadius = 60;
-
-    // Background circle
-    ctx.beginPath();
-    ctx.arc(speedoX, speedoY, speedoRadius, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-    ctx.fill();
-    ctx.strokeStyle = '#444';
-    ctx.lineWidth = 3;
-    ctx.stroke();
-
-    // Speed arc (animated based on speed)
-    const startAngle = Math.PI * 0.75;
-    const endAngle = startAngle + (Math.PI * 1.5 * speedPercent) / 100;
-
-    ctx.beginPath();
-    ctx.arc(speedoX, speedoY, speedoRadius - 8, startAngle, endAngle);
-    ctx.strokeStyle = speedPercent > 80 ? '#ff4444' : speedPercent > 50 ? '#ffaa00' : '#00ff00';
-    ctx.lineWidth = 8;
-    ctx.lineCap = 'round';
-    ctx.stroke();
-
-    // Speed value
-    ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 24px Arial';
-    ctx.textAlign = 'center';
-    ctx.fillText(`${displaySpeed}`, speedoX, speedoY + 8);
-
-    // "km/h" label
-    ctx.font = '12px Arial';
-    ctx.fillStyle = '#aaaaaa';
-    ctx.fillText('km/h', speedoX, speedoY + 25);
-
-    // ─── Health Bar (bottom center) ───────────────────────────────────────
-
-    const healthBarWidth = 200;
-    const healthBarHeight = 20;
-    const healthBarX = (canvasWidth - healthBarWidth) / 2;
-    const healthBarY = canvasHeight - 50;
-
-    // Background
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-    ctx.fillRect(healthBarX - 10, healthBarY - 25, healthBarWidth + 20, healthBarHeight + 35);
-
-    // Label
-    ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 12px Arial';
-    ctx.textAlign = 'center';
-    ctx.fillText('HEALTH', canvasWidth / 2, healthBarY - 8);
-
-    // Health bar background
-    ctx.fillStyle = '#333333';
-    ctx.fillRect(healthBarX, healthBarY, healthBarWidth, healthBarHeight);
-
-    // Health bar fill
-    ctx.fillStyle = healthPercent > 50 ? '#00ff00' : healthPercent > 25 ? '#ffaa00' : '#ff0000';
-    ctx.fillRect(healthBarX, healthBarY, (healthBarWidth * healthPercent) / 100, healthBarHeight);
-
-    // Health percentage text
-    ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 14px Arial';
-    ctx.fillText(`${Math.round(healthPercent)}%`, canvasWidth / 2, healthBarY + 15);
-
-    // ─── Lap Counter (top right) ──────────────────────────────────────────
-
-    const lapX = canvasWidth - 150;
-    const lapY = 30;
-    const totalLaps = LAP_CONFIG.totalLaps;
-    const currentLap = Math.min(localPlayer.currentLap || 0, totalLaps);
-    const displayLap = localPlayer.isFinished ? totalLaps : currentLap;
-    const remainingLaps = totalLaps - currentLap;
-
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-    ctx.fillRect(lapX - 10, lapY - 20, 150, 70);
-
-    ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 14px Arial';
-    ctx.textAlign = 'left';
-    ctx.fillText('LAP', lapX, lapY - 5);
-
-    // Current lap display
-    ctx.font = 'bold 32px Arial';
-    ctx.fillStyle = localPlayer.isFinished ? '#ffd700' : '#00ff00';
-    ctx.fillText(`${displayLap}/${totalLaps}`, lapX + 50, lapY + 5);
-
-    // Remaining laps
-    ctx.font = '12px Arial';
-    ctx.fillStyle = '#94a3b8';
-    if (localPlayer.isFinished) {
-      ctx.fillText('FINISHED!', lapX, lapY + 30);
-    } else if (remainingLaps > 0) {
-      ctx.fillText(`${remainingLaps} lap${remainingLaps > 1 ? 's' : ''} remaining`, lapX, lapY + 30);
-    } else {
-      ctx.fillText('Final lap!', lapX, lapY + 30);
+  const drawCar = (ctx, car, label, sprite) => {
+    ctx.save();
+    ctx.translate(car.x, car.y);
+    ctx.rotate(car.angle);
+    const carW = 96;
+    const carH = 48;
+    if (assets.sprites['car-shadow-1'])
+      ctx.drawImage(assets.sprites['car-shadow-1'], -carW / 2 + 6, -carH / 2 + 8, carW, carH);
+    if (sprite) ctx.drawImage(sprite, -carW / 2, -carH / 2, carW, carH);
+    else {
+      ctx.fillStyle = 'red';
+      ctx.fillRect(-carW / 2, -carH / 2, carW, carH);
     }
+    ctx.restore();
 
-    // ─── Position Indicator (top left) ────────────────────────────────────
-
-    const posX = 20;
-    const posY = 30;
-
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-    ctx.fillRect(posX - 10, posY - 20, 100, 50);
-
-    ctx.fillStyle = '#ffffff';
-    ctx.font = '12px Arial';
-    ctx.fillText('POSITION', posX, posY - 5);
-
-    const position = calculatePosition();
-    ctx.font = 'bold 24px Arial';
-    ctx.fillStyle = position === 1 ? '#ffd700' : '#ffffff';
-    ctx.fillText(`${position}${getOrdinalSuffix(position)}`, posX, posY + 22);
-
-    // ─── Input Display (bottom left) ──────────────────────────────────────
-
-    const inputX = 20;
-    const inputY = canvasHeight - 100;
-
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-    ctx.fillRect(inputX, inputY, 100, 80);
-
-    ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 10px Arial';
-    ctx.fillText('CONTROLS', inputX + 5, inputY + 12);
-
-    // W
-    ctx.fillStyle = input.accelerate ? '#00ff00' : '#444';
-    ctx.fillRect(inputX + 40, inputY + 18, 20, 15);
     ctx.fillStyle = '#fff';
-    ctx.font = '10px Arial';
-    ctx.fillText('W', inputX + 46, inputY + 29);
-
-    // A
-    ctx.fillStyle = input.turnLeft ? '#00ff00' : '#444';
-    ctx.fillRect(inputX + 15, inputY + 38, 20, 15);
-    ctx.fillStyle = '#fff';
-    ctx.fillText('A', inputX + 21, inputY + 49);
-
-    // S
-    ctx.fillStyle = input.brake ? '#00ff00' : '#444';
-    ctx.fillRect(inputX + 40, inputY + 38, 20, 15);
-    ctx.fillStyle = '#fff';
-    ctx.fillText('S', inputX + 46, inputY + 49);
-
-    // D
-    ctx.fillStyle = input.turnRight ? '#00ff00' : '#444';
-    ctx.fillRect(inputX + 65, inputY + 38, 20, 15);
-    ctx.fillStyle = '#fff';
-    ctx.fillText('D', inputX + 71, inputY + 49);
-
-    // Spacebar (Handbrake)
-    ctx.fillStyle = input.handbrake ? '#ff6600' : '#444';
-    ctx.fillRect(inputX + 15, inputY + 58, 70, 15);
-    ctx.fillStyle = '#fff';
-    ctx.font = '9px Arial';
-    ctx.fillText('SPACE (DRIFT)', inputX + 18, inputY + 69);
-
-    ctx.textAlign = 'left';
-  };
-
-  // Draw respawn message
-  const drawRespawnMessage = (ctx, w, h, message) => {
-    ctx.fillStyle = 'rgba(255, 0, 0, 0.3)';
-    ctx.fillRect(0, 0, w, h);
-
-    ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 48px Arial';
+    ctx.font = 'bold 13px Arial';
     ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(message, w / 2, h / 2);
-
-    ctx.font = '24px Arial';
-    ctx.fillText('Car destroyed! Respawning...', w / 2, h / 2 + 50);
-
-    ctx.textBaseline = 'alphabetic';
-    ctx.textAlign = 'left';
+    ctx.fillText(label, car.x, car.y - 44);
   };
 
-  // Draw countdown
-  const drawCountdown = (ctx, w, h, count) => {
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
-    ctx.fillRect(0, 0, w, h);
+  const drawHUD = (ctx, w, h) => {
+    const p = localPlayerRef.current;
+    ctx.fillStyle = 'rgba(0,0,0,0.5)';
+    ctx.fillRect(w - 180, h - 80, 160, 60);
+    ctx.fillStyle = '#fff';
+    ctx.font = '20px Arial';
+    ctx.fillText(`${getDisplaySpeed(p.speed)} km/h`, w - 170, h - 45);
+  };
 
-    ctx.fillStyle = '#ffffff';
+  const drawOverlay = (ctx, w, h, msg) => {
+    ctx.fillStyle = 'rgba(0,0,0,0.7)';
+    ctx.fillRect(0, 0, w, h);
+    ctx.fillStyle = '#fff';
+    ctx.font = '40px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText(msg, w / 2, h / 2);
+  };
+
+  const drawCountdown = (ctx, w, h, count) => {
+    ctx.fillStyle = '#fff';
     ctx.font = 'bold 120px Arial';
     ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(count.toString(), w / 2, h / 2);
-    ctx.textBaseline = 'alphabetic';
-    ctx.textAlign = 'left';
+    ctx.fillText(count, w / 2, h / 2);
   };
 
-  // Draw start prompt
   const drawStartPrompt = (ctx, w, h) => {
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
-    ctx.fillRect(w / 2 - 200, h / 2 - 40, 400, 80);
-
-    ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 24px Arial';
+    ctx.fillStyle = 'rgba(0,0,0,0.5)';
+    ctx.fillRect(w / 2 - 150, h / 2 - 30, 300, 60);
+    ctx.fillStyle = '#fff';
     ctx.textAlign = 'center';
-    ctx.fillText('Waiting for race to start...', w / 2, h / 2);
-    ctx.font = '16px Arial';
-    ctx.fillStyle = '#aaaaaa';
-    ctx.fillText('Press "Start Race" button to begin', w / 2, h / 2 + 25);
-    ctx.textAlign = 'left';
+    ctx.fillText('READY TO RACE', w / 2, h / 2);
   };
 
-  // Calculate player position
-  const calculatePosition = () => {
-    const localPlayer = localPlayerRef.current;
-    let position = 1;
-
-    Object.values(otherPlayersRef.current).forEach((playerData) => {
-      const other = playerData.current;
-
-      // Compare by laps first, then by progress around track
-      if (other.currentLap > localPlayer.currentLap) {
-        position++;
-      } else if (other.currentLap === localPlayer.currentLap) {
-        // Same lap - compare angle around track center for oval
-        const { centerX, centerY } = TRACK_CONFIG;
-        const localAngle = Math.atan2(localPlayer.y - centerY, localPlayer.x - centerX);
-        const otherAngle = Math.atan2(other.y - centerY, other.x - centerX);
-
-        // Racing counter-clockwise, so larger angle = ahead
-        if (otherAngle > localAngle) {
-          position++;
-        }
-      }
-    });
-
-    return position;
-  };
-
-  // Calculate final position when player finishes
-  const calculateFinalPosition = () => {
-    let position = 1;
-
-    // Count how many other players have already finished
-    Object.values(otherPlayersRef.current).forEach((playerData) => {
-      const other = playerData.current;
-      if (other.isFinished) {
-        position++;
-      }
-    });
-
-    return position;
-  };
-
-  // Format race time as mm:ss.ms
-  const formatRaceTime = (timeMs) => {
-    const totalSeconds = Math.floor(timeMs / 1000);
-    const minutes = Math.floor(totalSeconds / 60);
-    const seconds = totalSeconds % 60;
-    const ms = Math.floor((timeMs % 1000) / 10);
-    return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}.${ms.toString().padStart(2, '0')}`;
-  };
-
-  // Draw race finish overlay
   const drawRaceFinish = (ctx, w, h, data) => {
-    // Semi-transparent overlay
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
+    ctx.fillStyle = 'rgba(0,0,0,0.8)';
     ctx.fillRect(0, 0, w, h);
-
-    // Main finish box
-    const boxWidth = 500;
-    const boxHeight = 350;
-    const boxX = (w - boxWidth) / 2;
-    const boxY = (h - boxHeight) / 2;
-
-    // Box background with gradient
-    const gradient = ctx.createLinearGradient(boxX, boxY, boxX, boxY + boxHeight);
-    gradient.addColorStop(0, '#1e3a5f');
-    gradient.addColorStop(1, '#0f172a');
-    ctx.fillStyle = gradient;
-    ctx.fillRect(boxX, boxY, boxWidth, boxHeight);
-
-    // Box border
-    ctx.strokeStyle = data.position === 1 ? '#ffd700' : '#3b82f6';
-    ctx.lineWidth = 4;
-    ctx.strokeRect(boxX, boxY, boxWidth, boxHeight);
-
-    // "RACE FINISHED" header
-    ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 36px Arial';
+    ctx.fillStyle = '#ffd700';
+    ctx.font = 'bold 60px Arial';
     ctx.textAlign = 'center';
-    ctx.fillText('🏁 RACE FINISHED 🏁', w / 2, boxY + 50);
-
-    // Position display (large)
-    const posColor = data.position === 1 ? '#ffd700' : data.position === 2 ? '#c0c0c0' : data.position === 3 ? '#cd7f32' : '#ffffff';
-    ctx.fillStyle = posColor;
-    ctx.font = 'bold 72px Arial';
-    ctx.fillText(`${data.position}${getOrdinalSuffix(data.position)}`, w / 2, boxY + 140);
-
-    // Position label
-    ctx.fillStyle = '#94a3b8';
-    ctx.font = '18px Arial';
-    ctx.fillText('PLACE', w / 2, boxY + 165);
-
-    // Stats section
-    const statsY = boxY + 200;
-    
-    // Race Time
-    ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 24px Arial';
-    ctx.fillText(`⏱️ ${formatRaceTime(data.raceTime)}`, w / 2, statsY);
-    
-    ctx.fillStyle = '#94a3b8';
-    ctx.font = '14px Arial';
-    ctx.fillText('RACE TIME', w / 2, statsY + 22);
-
-    // Laps completed
-    ctx.fillStyle = '#22c55e';
-    ctx.font = 'bold 24px Arial';
-    ctx.fillText(`${data.laps}/${LAP_CONFIG.totalLaps} Laps`, w / 2, statsY + 60);
-
-    // Player ID
-    ctx.fillStyle = '#64748b';
-    ctx.font = '16px Arial';
-    ctx.fillText(`Player: ${data.playerId}`, w / 2, statsY + 95);
-
-    // Instruction
-    ctx.fillStyle = '#3b82f6';
-    ctx.font = '16px Arial';
-    ctx.fillText('Press "Reset Race" to play again', w / 2, boxY + boxHeight - 30);
-
-    ctx.textAlign = 'left';
+    ctx.fillText(`FINISH: ${data.position}${getOrdinalSuffix(data.position)}`, w / 2, h / 2);
   };
 
-  // Get ordinal suffix
-  const getOrdinalSuffix = (n) => {
-    if (n === 1) return 'st';
-    if (n === 2) return 'nd';
-    if (n === 3) return 'rd';
+  const calculateFinalPosition = () => {
+    let pos = 1;
+    Object.values(otherPlayersRef.current).forEach((p) => {
+      if (p.current.isFinished) pos++;
+    });
+    return pos;
+  };
+
+  const getOrdinalSuffix = (i) => {
+    const j = i % 10;
+    const k = i % 100;
+    if (j === 1 && k !== 11) return 'st';
+    if (j === 2 && k !== 12) return 'nd';
+    if (j === 3 && k !== 13) return 'rd';
     return 'th';
   };
 
   return (
-    <canvas
-      ref={canvasRef}
-      width={width}
-      height={height}
-      style={{
-        display: 'block',
-        margin: '0 auto',
-        border: '3px solid #3b82f6',
-        borderRadius: '12px',
-        backgroundColor: '#1a1a2e',
-        boxShadow: '0 10px 40px rgba(59, 130, 246, 0.3)',
-      }}
-    />
+    <div className="relative w-full h-full flex items-center justify-center overflow-hidden bg-black rounded-xl shadow-2xl border-4 border-slate-800">
+      <canvas ref={canvasRef} width={width} height={height} className="max-w-full max-h-full object-contain" />
+    </div>
   );
 }

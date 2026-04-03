@@ -32,11 +32,10 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                        .requestMatchers("/api/register", "/api/login","/ws-racing/**").permitAll()
+                        .requestMatchers("/api/register", "/api/login", "/ws-racing/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/results/leaderboard").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/results/save").permitAll()
-                        .anyRequest().authenticated()
-                )
+                        .anyRequest().authenticated())
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();

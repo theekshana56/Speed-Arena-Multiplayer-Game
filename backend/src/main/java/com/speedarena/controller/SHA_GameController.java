@@ -7,6 +7,8 @@ import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Controller;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -38,10 +40,28 @@ public class SHA_GameController {
     private final Map<String, Map<String, SHA_CarState>> gameRooms = new ConcurrentHashMap<>();
 
     /**
+     * In-memory room meta: roomId -> {hostPlayerId, mapId}
+     * Keeps host-selected map stable for all clients in the room.
+     */
+    private final Map<String, RoomMeta> roomMeta = new ConcurrentHashMap<>();
+
+    /**
+     * Room join order: roomId -> [playerId0, playerId1, ...]
+     * Used to assign start grid slots deterministically for real multiplayer players.
+     */
+    private final Map<String, List<String>> roomPlayersOrder = new ConcurrentHashMap<>();
+
+    /**
      * Used to push messages to specific topics manually (outside @SendTo).
      * Injected by Spring automatically.
      */
     private final SimpMessagingTemplate messagingTemplate;
+
+    private static class RoomMeta {
+        String hostPlayerId;
+        String mapId;
+        Long startAtEpochMs;
+    }
 
     public SHA_GameController(SimpMessagingTemplate messagingTemplate) {
         this.messagingTemplate = messagingTemplate;
@@ -116,6 +136,12 @@ public class SHA_GameController {
         carState.setStatus("WAITING");
         carState.setTimestamp(System.currentTimeMillis());
 
+        // Track join order and assign start slot index (0..3)
+        List<String> order = roomPlayersOrder.computeIfAbsent(roomId, k -> Collections.synchronizedList(new ArrayList<>()));
+        if (!order.contains(carState.getPlayerId())) {
+            order.add(carState.getPlayerId());
+        }
+
         // Register the player
         gameRooms
             .computeIfAbsent(roomId, k -> new ConcurrentHashMap<>())
@@ -137,6 +163,65 @@ public class SHA_GameController {
             "/topic/room/" + roomId + "/players",
             currentPlayers
         );
+
+        // Broadcast slot assignments to the room
+        Map<String, Integer> slots = new HashMap<>();
+        for (int i = 0; i < order.size(); i++) {
+            slots.put(order.get(i), i);
+        }
+        messagingTemplate.convertAndSend("/topic/room/" + roomId + "/slots", slots);
+
+        // If the room already has a selected map, broadcast it (so late joiners sync).
+        RoomMeta meta = roomMeta.get(roomId);
+        if (meta != null && meta.mapId != null && !meta.mapId.isBlank()) {
+            Map<String, String> msg = new HashMap<>();
+            msg.put("mapId", meta.mapId);
+            msg.put("hostPlayerId", meta.hostPlayerId != null ? meta.hostPlayerId : "");
+            messagingTemplate.convertAndSend("/topic/room/" + roomId + "/map", msg);
+        }
+
+        // If a race has already been started and countdown is in progress, sync start time to late joiners.
+        if (meta != null && meta.startAtEpochMs != null && meta.startAtEpochMs > System.currentTimeMillis()) {
+            Map<String, Object> startMsg = new HashMap<>();
+            startMsg.put("startAtEpochMs", meta.startAtEpochMs);
+            startMsg.put("mapId", meta.mapId != null ? meta.mapId : "");
+            messagingTemplate.convertAndSend("/topic/room/" + roomId + "/start", startMsg);
+        }
+    }
+
+    /**
+     * Host selects the map/scene for this room.
+     *
+     * Frontend sends to:  /app/room.map.select
+     * Room clients get:   /topic/room/{roomId}/map
+     *
+     * Payload: { roomId, hostPlayerId, mapId }
+     */
+    @MessageMapping("/room.map.select")
+    public void handleRoomMapSelect(Map<String, String> payload) {
+        if (payload == null) return;
+        String roomId = payload.get("roomId");
+        String hostPlayerId = payload.get("hostPlayerId");
+        String mapId = payload.get("mapId");
+        if (roomId == null || roomId.isBlank() || mapId == null || mapId.isBlank()) return;
+
+        RoomMeta meta = roomMeta.computeIfAbsent(roomId, k -> new RoomMeta());
+
+        // Establish host on first select; enforce thereafter.
+        if (meta.hostPlayerId == null || meta.hostPlayerId.isBlank()) {
+            meta.hostPlayerId = hostPlayerId;
+        } else if (hostPlayerId == null || !meta.hostPlayerId.equals(hostPlayerId)) {
+            System.out.println("[ROOM_MAP_SELECT] rejected non-host: " + hostPlayerId + " room=" + roomId);
+            return;
+        }
+
+        meta.mapId = mapId;
+
+        Map<String, String> msg = new HashMap<>();
+        msg.put("mapId", mapId);
+        msg.put("hostPlayerId", meta.hostPlayerId != null ? meta.hostPlayerId : "");
+        System.out.println("[ROOM_MAP_SELECT] room=" + roomId + " mapId=" + mapId + " host=" + meta.hostPlayerId);
+        messagingTemplate.convertAndSend("/topic/room/" + roomId + "/map", msg);
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -165,8 +250,20 @@ public class SHA_GameController {
     public void handleGameStart(Map<String, String> payload) {
         String roomId = payload.get("roomId");
         if (roomId != null) {
-            System.out.println("[GAME_START] roomId: " + roomId);
-            messagingTemplate.convertAndSend("/topic/room/" + roomId + "/start", "START");
+            RoomMeta meta = roomMeta.get(roomId);
+            if (meta == null || meta.mapId == null || meta.mapId.isBlank()) {
+                System.out.println("[GAME_START] rejected (no map selected) roomId: " + roomId);
+                return;
+            }
+            long startAt = System.currentTimeMillis() + 3000; // 3 second synchronized countdown
+            meta.startAtEpochMs = startAt;
+
+            Map<String, Object> startMsg = new HashMap<>();
+            startMsg.put("startAtEpochMs", startAt);
+            startMsg.put("mapId", meta.mapId);
+
+            System.out.println("[GAME_START] roomId: " + roomId + " startAt=" + startAt + " mapId=" + meta.mapId);
+            messagingTemplate.convertAndSend("/topic/room/" + roomId + "/start", startMsg);
         }
     }
 

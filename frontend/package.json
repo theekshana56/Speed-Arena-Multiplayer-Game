@@ -7,6 +7,8 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
+    "test:track": "node --test src/game/track/trackGeometry.test.js src/game/track/validateTrack.test.js",
+    "generate-track": "node scripts/generate_track_sketch.mjs",
     "preview": "vite preview"
   },
   "dependencies": {

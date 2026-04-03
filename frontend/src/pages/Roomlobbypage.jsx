@@ -1,7 +1,10 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import SockJS from "sockjs-client";
 import { Client } from "@stomp/stompjs";
+import { canonicalMapId } from "../game/track/polylineTrack.js";
+import { getOrCreateNetworkPlayerId } from "../session/playerIdentity.js";
+import { clampGridSlot } from "../utils/gridSlot.js";
 
 const WS_URL = "http://127.0.0.1:8080/ws-racing";
 const CAR_COLORS = { 
@@ -21,15 +24,16 @@ export default function RoomLobbyPage() {
   const navigate = useNavigate();
 
   // Pull session data set by GameHomePage
-  const playerName = sessionStorage.getItem("playerName") || "PLAYER";
   const carColor   = sessionStorage.getItem("carColor")   || "red";
   const roomId     = sessionStorage.getItem("roomId")     || "ROOM01";
   const isHost     = sessionStorage.getItem("isHost")     === "true";
 
-  const playerId = playerName.toLowerCase().replace(/\s+/g, "_");
+  const playerId = useMemo(() => getOrCreateNetworkPlayerId(), []);
 
   const [players, setPlayers]     = useState([]);
   const [connected, setConnected] = useState(false);
+  const [mapId, setMapId] = useState(() => canonicalMapId(sessionStorage.getItem("mapId")));
+  const [slots, setSlots] = useState({});
   const [copied, setCopied]       = useState(false);
   const [dots, setDots]           = useState(".");
   const clientRef = useRef(null);
@@ -65,21 +69,42 @@ export default function RoomLobbyPage() {
         });
 
         // Subscribe to game-start signal from host
-        client.subscribe(`/topic/room/${roomId}/start`, () => {
+        client.subscribe(`/topic/room/${roomId}/start`, (msg) => {
+          try {
+            const data = JSON.parse(msg.body);
+            if (data?.startAtEpochMs) sessionStorage.setItem("startAtEpochMs", String(data.startAtEpochMs));
+            if (data?.mapId) sessionStorage.setItem("mapId", canonicalMapId(data.mapId));
+          } catch {
+            // ignore
+          }
           navigate("/race");
         });
 
-        // Announce this player joining the room
-        client.publish({
-          destination: "/app/player.join",
-          body: JSON.stringify({
-            playerId,
-            roomId,
-            carColor,
-            x: 340, y: 75,
-            angle: 0, speed: 0,
-            status: "WAITING",
-          }),
+        // Subscribe to host-selected map for the room
+        client.subscribe(`/topic/room/${roomId}/map`, (msg) => {
+          try {
+            const data = JSON.parse(msg.body);
+            const newMap = canonicalMapId(data?.mapId);
+            if (!newMap) return;
+            setMapId(newMap);
+            sessionStorage.setItem("mapId", newMap);
+          } catch {
+            // ignore
+          }
+        });
+
+        // Subscribe to slot assignments (join order -> start grid index)
+        client.subscribe(`/topic/room/${roomId}/slots`, (msg) => {
+          try {
+            const data = JSON.parse(msg.body);
+            setSlots(data || {});
+            const mySlot = data?.[playerId];
+            if (typeof mySlot === "number") {
+              sessionStorage.setItem("startIndex", String(mySlot));
+            }
+          } catch {
+            // ignore
+          }
         });
       },
 
@@ -93,6 +118,27 @@ export default function RoomLobbyPage() {
     return () => client.deactivate();
   }, []);
 
+  useEffect(() => {
+    if (!connected || !clientRef.current) return;
+    const raw = typeof slots[playerId] === "number"
+      ? slots[playerId]
+      : Number(sessionStorage.getItem("startIndex"));
+    clientRef.current.publish({
+      destination: "/app/player.join",
+      body: JSON.stringify({
+        playerId,
+        roomId,
+        carColor,
+        x: 340,
+        y: 75,
+        angle: 0,
+        speed: 0,
+        status: "WAITING",
+        gridSlot: clampGridSlot(raw),
+      }),
+    });
+  }, [connected, slots, playerId, roomId, carColor]);
+
   // Countdown removed
 
   // ── Host starts the race ─────────────────────────────────────────────────
@@ -102,8 +148,18 @@ export default function RoomLobbyPage() {
       destination: `/app/game.start`,
       body: JSON.stringify({ roomId }),
     });
-    // Navigate immediately
-    navigate("/race");
+  };
+
+  const selectMap = (newMapId) => {
+    if (!connected) return;
+    const id = canonicalMapId(newMapId);
+    if (!id) return;
+    setMapId(id);
+    sessionStorage.setItem("mapId", id);
+    clientRef.current?.publish({
+      destination: "/app/room.map.select",
+      body: JSON.stringify({ roomId, hostPlayerId: playerId, mapId: id }),
+    });
   };
 
   const copyCode = () => {
@@ -113,7 +169,7 @@ export default function RoomLobbyPage() {
   };
 
   const myColor = CAR_COLORS[carColor] || "#ff3333";
-  const canStart = players.length >= 2;
+  const canStart = players.length >= 2 && !!mapId;
 
   return (
     <div style={s.screen}>
@@ -188,13 +244,59 @@ export default function RoomLobbyPage() {
           {/* Race details */}
           <div style={{ ...s.card, background: "rgba(255,255,255,0.03)" }}>
             <div style={s.cardLabel}>SESSION SPECIFICATIONS</div>
-            {[["PROTOCOL", "WEBSOCKET-SECURE"], ["ENVIRONMENT", "OVAL CIRCUIT"], ["OBJECTIVE", "3 LAPS"], ["SYNC", "REAL-TIME"]].map(([k, v]) => (
+            {[
+              ["PROTOCOL", "WEBSOCKET-SECURE"],
+              ["MAP", mapId ? mapId.toUpperCase() : (isHost ? "SELECT MAP" : "WAITING MAP")],
+              ["OBJECTIVE", "3 LAPS"],
+              ["SYNC", "REAL-TIME"],
+            ].map(([k, v]) => (
               <div key={k} style={s.detailRow}>
                 <span style={{ color: "rgba(255,255,255,0.3)", letterSpacing: "2px" }}>{k}</span>
                 <span style={{ color: k === "SYNC" ? "#ff3333" : "rgba(255,255,255,0.6)", fontWeight: "bold" }}>{v}</span>
               </div>
             ))}
           </div>
+
+          {/* Host map selection */}
+          {isHost && (
+            <div style={{ ...s.card, background: "rgba(255,255,255,0.03)" }}>
+              <div style={s.cardLabel}>HOST MAP CONTROL</div>
+              <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+                {[
+                  { id: "forest", label: "FOREST" },
+                  { id: "desert", label: "DESERT" },
+                  { id: "snow", label: "SNOW" },
+                ].map((m) => {
+                  const active = mapId === m.id;
+                  return (
+                    <button
+                      key={m.id}
+                      onClick={() => selectMap(m.id)}
+                      style={{
+                        width: "auto",
+                        padding: "12px 14px",
+                        borderRadius: "10px",
+                        fontSize: "11px",
+                        fontWeight: "900",
+                        letterSpacing: "3px",
+                        fontFamily: "'Orbitron', sans-serif",
+                        transition: "all 0.25s",
+                        background: active ? myColor : "rgba(255,255,255,0.03)",
+                        color: active ? "#000" : "rgba(255,255,255,0.7)",
+                        border: `1px solid ${active ? myColor : "rgba(255,255,255,0.08)"}`,
+                        cursor: "pointer",
+                      }}
+                    >
+                      {m.label}
+                    </button>
+                  );
+                })}
+              </div>
+              <div style={{ marginTop: "10px", fontSize: "10px", color: "rgba(255,255,255,0.25)", letterSpacing: "2px", fontFamily: "'Orbitron', sans-serif" }}>
+                {mapId ? `SELECTED: ${mapId.toUpperCase()}` : "SELECT A MAP TO ENABLE START"}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* RIGHT col — player list */}
@@ -280,7 +382,11 @@ export default function RoomLobbyPage() {
                 boxShadow: canStart ? `0 0 40px ${myColor}40` : "none",
                 marginTop: "20px",
               }}>
-              {canStart ? "🏁 INITIALIZE RACE" : `⏳ AWAITING ${2 - players.length > 0 ? 2 - players.length : 0} MORE DRIVER${players.length < 1 ? "S" : ""}...`}
+              {canStart
+                ? "🏁 INITIALIZE RACE"
+                : players.length < 2
+                  ? `⏳ AWAITING ${2 - players.length > 0 ? 2 - players.length : 0} MORE DRIVER${players.length < 1 ? "S" : ""}...`
+                  : "🗺️ SELECT MAP..."}
             </button>
           ) : (
             <div style={{ ...s.waitingMsg, marginTop: "20px" }}>
