@@ -5,6 +5,7 @@ import { Client } from "@stomp/stompjs";
 import { canonicalMapId } from "../game/track/polylineTrack.js";
 import { getOrCreateNetworkPlayerId } from "../session/playerIdentity.js";
 import { clampGridSlot } from "../utils/gridSlot.js";
+import { PALETTE } from "../theme/midnightSpark.js";
 
 const WS_URL = "http://127.0.0.1:8080/ws-racing";
 const CAR_COLORS = { 
@@ -184,11 +185,11 @@ export default function RoomLobbyPage() {
         </button>
         <div style={{ textAlign: "center" }}>
             <span style={s.logo}>⚡ SPEED ARENA</span>
-            <div style={{ fontSize: "8px", letterSpacing: "4px", color: "rgba(255,255,255,0.2)", marginTop: "2px", fontFamily: "'Orbitron', sans-serif" }}>MULTIPLAYER LOBBY</div>
+            <div style={{ fontSize: "8px", letterSpacing: "4px", color: `${PALETTE.oxygen}44`, marginTop: "2px", fontFamily: "'Orbitron', sans-serif" }}>MULTIPLAYER LOBBY</div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-          <span style={{ width: "8px", height: "8px", borderRadius: "50%", background: connected ? "#00e87a" : "#ff3333", display: "inline-block", boxShadow: `0 0 10px ${connected ? "#00e87a" : "#ff3333"}` }} />
-          <span style={{ fontSize: "10px", color: connected ? "#00e87a" : "rgba(255,255,255,0.3)", letterSpacing: "1px", fontWeight: "bold", fontFamily: "'Orbitron', sans-serif" }}>
+          <span style={{ width: "8px", height: "8px", borderRadius: "50%", background: connected ? PALETTE.neonMint : PALETTE.orange, display: "inline-block", boxShadow: `0 0 10px ${connected ? PALETTE.neonMint : PALETTE.orange}` }} />
+          <span style={{ fontSize: "10px", color: connected ? PALETTE.neonMint : `${PALETTE.oxygen}44`, letterSpacing: "1px", fontWeight: "bold", fontFamily: "'Orbitron', sans-serif" }}>
             {connected ? "CONNECTED" : "CONNECTING..."}
           </span>
         </div>
@@ -204,7 +205,7 @@ export default function RoomLobbyPage() {
           <div style={{ ...s.card, borderColor: `${myColor}40`, boxShadow: `0 0 40px ${myColor}15`, background: "rgba(255,255,255,0.03)" }}>
             <div style={s.cardLabel}>MISSION CODE</div>
             <div style={{ ...s.roomCode, color: myColor, textShadow: `0 0 20px ${myColor}40` }}>{roomId}</div>
-            <button onClick={copyCode} style={{ ...s.copyBtn, borderColor: `${myColor}60`, color: copied ? "#00e87a" : myColor, background: copied ? "rgba(0, 232, 122, 0.1)" : "transparent" }}>
+            <button onClick={copyCode} style={{ ...s.copyBtn, borderColor: `${myColor}60`, color: copied ? PALETTE.neonMint : myColor, background: copied ? `${PALETTE.neonMint}18` : "transparent" }}>
               {copied ? "✓ CODE COPIED!" : "📋 COPY MISSION CODE"}
             </button>
             <p style={s.hint}>
@@ -216,7 +217,7 @@ export default function RoomLobbyPage() {
           <div style={{ ...s.card, background: "rgba(255,255,255,0.03)" }}>
             <div style={s.cardLabel}>OPERATIONAL STATUS</div>
             <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "16px" }}>
-              <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#00e87a", display: "inline-block", animation: "pulse 1.5s ease-in-out infinite", boxShadow: "0 0 8px #00e87a" }} />
+              <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: PALETTE.neonMint, display: "inline-block", animation: "pulse 1.5s ease-in-out infinite", boxShadow: `0 0 8px ${PALETTE.neonMint}` }} />
               <span style={{ fontSize: "11px", color: "rgba(255,255,255,0.4)", letterSpacing: "2px", fontWeight: "bold", fontFamily: "'Orbitron', sans-serif" }}>
                 {players.length < 4 ? `WAITING FOR DRIVERS${dots}` : "LOBBY CAPACITY REACHED"}
               </span>
@@ -252,7 +253,7 @@ export default function RoomLobbyPage() {
             ].map(([k, v]) => (
               <div key={k} style={s.detailRow}>
                 <span style={{ color: "rgba(255,255,255,0.3)", letterSpacing: "2px" }}>{k}</span>
-                <span style={{ color: k === "SYNC" ? "#ff3333" : "rgba(255,255,255,0.6)", fontWeight: "bold" }}>{v}</span>
+                <span style={{ color: k === "SYNC" ? PALETTE.orange : `${PALETTE.oxygen}99`, fontWeight: "bold" }}>{v}</span>
               </div>
             ))}
           </div>
@@ -342,7 +343,7 @@ export default function RoomLobbyPage() {
                             </span>
                           )}
                           {i === 0 && (
-                            <span style={{ fontSize: "8px", background: "rgba(255,213,32,0.1)", border: "1px solid rgba(255,213,32,0.3)", color: "#ffd520", borderRadius: "4px", padding: "2px 6px", letterSpacing: "2px", fontWeight: "bold" }}>
+                            <span style={{ fontSize: "8px", background: `${PALETTE.orange}18`, border: `1px solid ${PALETTE.orange}55`, color: PALETTE.orange, borderRadius: "4px", padding: "2px 6px", letterSpacing: "2px", fontWeight: "bold" }}>
                               HOST
                             </span>
                           )}
@@ -353,7 +354,7 @@ export default function RoomLobbyPage() {
                       </div>
 
                       {/* Ready badge */}
-                      <div style={{ fontSize: "9px", color: "#00e87a", background: "rgba(0, 232, 122, 0.1)", border: "1px solid rgba(0, 232, 122, 0.2)", borderRadius: "6px", padding: "6px 10px", letterSpacing: "2px", fontWeight: "bold", fontFamily: "'Orbitron', sans-serif" }}>
+                      <div style={{ fontSize: "9px", color: PALETTE.neonMint, background: `${PALETTE.neonMint}14`, border: `1px solid ${PALETTE.neonMint}33`, borderRadius: "6px", padding: "6px 10px", letterSpacing: "2px", fontWeight: "bold", fontFamily: "'Orbitron', sans-serif" }}>
                         ✓ READY
                       </div>
                     </>
@@ -422,25 +423,96 @@ export default function RoomLobbyPage() {
 }
 
 const s = {
-  screen: { background: "#03030e", minHeight: "100vh", color: "#fff", fontFamily: "'Inter', sans-serif", position: "relative", overflow: "hidden" },
-  grid: { position: "fixed", inset: 0, backgroundImage: "linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px)", backgroundSize: "60px 60px", pointerEvents: "none" },
-  overlay: { position: "fixed", inset: 0, background: "rgba(3,3,14,0.95)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(20px)" },
+  screen: {
+    background: `linear-gradient(165deg, ${PALETTE.navy} 0%, ${PALETTE.slateBlue} 42%, ${PALETTE.navy} 100%)`,
+    minHeight: "100vh",
+    color: PALETTE.oxygen,
+    fontFamily: "'Inter', sans-serif",
+    position: "relative",
+    overflow: "hidden",
+  },
+  grid: {
+    position: "fixed",
+    inset: 0,
+    backgroundImage: `linear-gradient(${PALETTE.oxygen}0f 1px, transparent 1px), linear-gradient(90deg, ${PALETTE.slateBlue}55 1px, transparent 1px)`,
+    backgroundSize: "60px 60px",
+    pointerEvents: "none",
+    opacity: 0.5,
+  },
+  overlay: { position: "fixed", inset: 0, background: `${PALETTE.navy}f2`, zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(20px)" },
   countNum: { fontSize: "200px", fontWeight: "900", animation: "countIn 0.5s cubic-bezier(0.34,1.56,0.64,1)", fontFamily: "'Orbitron', sans-serif" },
-  header: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "24px 48px", borderBottom: "1px solid rgba(255,255,255,0.05)", background: "rgba(0,0,0,0.2)", backdropFilter: "blur(10px)" },
-  backBtn: { background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.4)", padding: "10px 18px", borderRadius: "6px", cursor: "pointer", fontSize: "10px", letterSpacing: "2px", fontFamily: "'Orbitron', sans-serif", transition: "all 0.3s" },
-  logo: { color: "#ff3333", fontSize: "18px", fontWeight: "900", letterSpacing: "5px", fontFamily: "'Orbitron', sans-serif" },
+  header: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: "24px 48px",
+    borderBottom: `1px solid ${PALETTE.slateBlue}99`,
+    background: `linear-gradient(180deg, ${PALETTE.slateBlue}55, ${PALETTE.navy}99)`,
+    backdropFilter: "blur(10px)",
+  },
+  backBtn: {
+    background: `${PALETTE.oxygen}08`,
+    border: `1px solid ${PALETTE.slateBlue}aa`,
+    color: `${PALETTE.oxygen}99`,
+    padding: "10px 18px",
+    borderRadius: "6px",
+    cursor: "pointer",
+    fontSize: "10px",
+    letterSpacing: "2px",
+    fontFamily: "'Orbitron', sans-serif",
+    transition: "all 0.3s",
+  },
+  logo: {
+    color: PALETTE.oxygen,
+    textShadow: `0 0 20px ${PALETTE.oxygen}44, 0 0 28px ${PALETTE.orange}33`,
+    fontSize: "18px",
+    fontWeight: "900",
+    letterSpacing: "5px",
+    fontFamily: "'Orbitron', sans-serif",
+  },
   main: { display: "flex", gap: "40px", padding: "40px 48px", maxWidth: "1100px", margin: "0 auto", flexWrap: "wrap" },
   leftCol: { flex: "1", minWidth: "300px", display: "flex", flexDirection: "column", gap: "20px" },
   rightCol: { flex: "1.3", minWidth: "340px", display: "flex", flexDirection: "column", gap: "16px" },
-  card: { background: "rgba(255, 255, 255, 0.03)", backdropFilter: "blur(12px)", border: "1px solid rgba(255,255,255,0.05)", borderRadius: "16px", padding: "24px" },
-  cardLabel: { fontSize: "10px", color: "rgba(255,255,255,0.3)", letterSpacing: "4px", marginBottom: "16px", fontFamily: "'Orbitron', sans-serif" },
+  card: {
+    background: `${PALETTE.slateBlue}33`,
+    backdropFilter: "blur(12px)",
+    border: `1px solid ${PALETTE.slateBlue}88`,
+    borderRadius: "16px",
+    padding: "24px",
+  },
+  cardLabel: { fontSize: "10px", color: `${PALETTE.oxygen}88`, letterSpacing: "4px", marginBottom: "16px", fontFamily: "'Orbitron', sans-serif" },
   roomCode: { fontSize: "52px", fontWeight: "900", letterSpacing: "12px", textAlign: "center", marginBottom: "20px", fontFamily: "'Orbitron', sans-serif" },
   copyBtn: { width: "100%", border: "1px solid", borderRadius: "10px", padding: "14px", cursor: "pointer", fontSize: "11px", letterSpacing: "3px", fontFamily: "'Orbitron', sans-serif", fontWeight: "bold", transition: "all 0.3s", marginBottom: "12px" },
-  hint: { fontSize: "11px", color: "rgba(255,255,255,0.3)", letterSpacing: "1px", lineHeight: "1.6", margin: 0, fontFamily: "'Inter', sans-serif" },
-  detailRow: { display: "flex", justifyContent: "space-between", fontSize: "11px", letterSpacing: "1px", marginBottom: "10px", fontFamily: "'Orbitron', sans-serif", borderBottom: "1px solid rgba(255,255,255,0.02)", paddingBottom: "8px" },
-  sectionLabel: { fontSize: "11px", color: "rgba(255,255,255,0.3)", letterSpacing: "4px", fontFamily: "'Orbitron', sans-serif" },
+  hint: { fontSize: "11px", color: `${PALETTE.oxygen}66`, letterSpacing: "1px", lineHeight: "1.6", margin: 0, fontFamily: "'Inter', sans-serif" },
+  detailRow: {
+    display: "flex",
+    justifyContent: "space-between",
+    fontSize: "11px",
+    letterSpacing: "1px",
+    marginBottom: "10px",
+    fontFamily: "'Orbitron', sans-serif",
+    borderBottom: `1px solid ${PALETTE.oxygen}0f`,
+    paddingBottom: "8px",
+  },
+  sectionLabel: { fontSize: "11px", color: `${PALETTE.oxygen}88`, letterSpacing: "4px", fontFamily: "'Orbitron', sans-serif" },
   slot: { display: "flex", alignItems: "center", gap: "16px", border: "1px solid", borderRadius: "16px", padding: "18px 24px", minHeight: "70px", transition: "all 0.4s cubic-bezier(0.4, 0, 0.2, 1)" },
   startBtn: { width: "100%", padding: "20px", border: "none", borderRadius: "12px", fontSize: "15px", fontWeight: "900", letterSpacing: "4px", fontFamily: "'Orbitron', sans-serif", transition: "all 0.3s", cursor: "pointer" },
-  waitingMsg: { textAlign: "center", fontSize: "11px", color: "rgba(255,255,255,0.4)", letterSpacing: "3px", padding: "20px", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "16px", background: "rgba(255,255,255,0.02)", fontFamily: "'Orbitron', sans-serif" },
-  instructions: { background: "rgba(255, 255, 255, 0.02)", border: "1px solid rgba(255,255,255,0.05)", borderRadius: "16px", padding: "24px", marginTop: "8px" },
+  waitingMsg: {
+    textAlign: "center",
+    fontSize: "11px",
+    color: `${PALETTE.oxygen}88`,
+    letterSpacing: "3px",
+    padding: "20px",
+    border: `1px solid ${PALETTE.slateBlue}88`,
+    borderRadius: "16px",
+    background: `${PALETTE.navy}99`,
+    fontFamily: "'Orbitron', sans-serif",
+  },
+  instructions: {
+    background: `${PALETTE.slateBlue}22`,
+    border: `1px solid ${PALETTE.slateBlue}88`,
+    borderRadius: "16px",
+    padding: "24px",
+    marginTop: "8px",
+  },
 };

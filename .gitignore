@@ -26,3 +26,7 @@ application.properties
 
 node_modules
 
+# Build output
+backend/target/
+frontend/dist/
+

@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import GameCanvas from '../components/GameCanvas';
 import { useMockWebSocket } from '../services/mockWebsocket';
+import { PALETTE } from '../theme/midnightSpark.js';
 import '../index.css';
 
 export default function GamePage() {
@@ -48,7 +49,7 @@ export default function GamePage() {
         <div className="sa-brand">Speed Arena</div>
         <div className="sa-top-actions">
           <span className="sa-help" style={{
-            color: connected ? '#22c55e' : '#ef4444',
+            color: connected ? PALETTE.neonMint : PALETTE.orange,
             display: 'flex',
             alignItems: 'center',
             gap: '8px'
@@ -57,7 +58,7 @@ export default function GamePage() {
               width: '10px',
               height: '10px',
               borderRadius: '50%',
-              backgroundColor: connected ? '#22c55e' : '#ef4444',
+              backgroundColor: connected ? PALETTE.neonMint : PALETTE.orange,
               display: 'inline-block'
             }}></span>
             {connected ? 'Connected' : 'Connecting...'}
@@ -74,7 +75,7 @@ export default function GamePage() {
       }}>
         {/* Room Info Card */}
         <div style={{
-          background: 'linear-gradient(135deg, #1e3a5f 0%, #0f172a 100%)',
+          background: `linear-gradient(135deg, ${PALETTE.slateBlue} 0%, ${PALETTE.navy} 100%)`,
           borderRadius: '16px',
           padding: '20px',
           marginBottom: '20px',
@@ -89,7 +90,7 @@ export default function GamePage() {
             <div style={{
               fontSize: '10px',
               fontWeight: '800',
-              color: '#3b82f6',
+              color: PALETTE.orange,
               letterSpacing: '2px',
               marginBottom: '4px'
             }}>
@@ -98,7 +99,7 @@ export default function GamePage() {
             <div style={{
               fontSize: '24px',
               fontWeight: 'bold',
-              color: '#ffffff',
+              color: PALETTE.oxygen,
               letterSpacing: '4px'
             }}>
               {roomId.toUpperCase()}
@@ -108,18 +109,18 @@ export default function GamePage() {
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
             {/* Race Status */}
             <div style={{
-              background: raceStarted ? 'rgba(34, 197, 94, 0.2)' : countdown > 0 ? 'rgba(234, 179, 8, 0.2)' : 'rgba(100, 116, 139, 0.2)',
-              border: `1px solid ${raceStarted ? '#22c55e' : countdown > 0 ? '#eab308' : '#64748b'}`,
+              background: raceStarted ? `${PALETTE.neonMint}22` : countdown > 0 ? `${PALETTE.orange}22` : `${PALETTE.slateBlue}44`,
+              border: `1px solid ${raceStarted ? PALETTE.neonMint : countdown > 0 ? PALETTE.orange : PALETTE.slateBlue}`,
               borderRadius: '8px',
               padding: '10px 20px',
               textAlign: 'center',
             }}>
               {raceStarted ? (
-                <span style={{ color: '#22c55e', fontWeight: 'bold', fontSize: '18px' }}>RACING!</span>
+                <span style={{ color: PALETTE.neonMint, fontWeight: 'bold', fontSize: '18px' }}>RACING!</span>
               ) : countdown > 0 ? (
-                <span style={{ color: '#eab308', fontWeight: 'bold', fontSize: '32px' }}>{countdown}</span>
+                <span style={{ color: PALETTE.orange, fontWeight: 'bold', fontSize: '32px' }}>{countdown}</span>
               ) : (
-                <span style={{ color: '#64748b', fontWeight: '600' }}>Ready to Start</span>
+                <span style={{ color: `${PALETTE.oxygen}55`, fontWeight: '600' }}>Ready to Start</span>
               )}
             </div>
 
@@ -144,8 +145,8 @@ export default function GamePage() {
                 padding: '12px 32px',
                 fontSize: '14px',
                 fontWeight: '700',
-                background: '#dc2626',
-                color: '#ffffff',
+                background: PALETTE.slateBlue,
+                color: PALETTE.oxygen,
                 border: 'none',
                 borderRadius: '8px',
                 cursor: connected ? 'pointer' : 'not-allowed',
@@ -160,7 +161,7 @@ export default function GamePage() {
 
         {/* Game Canvas */}
         <div style={{
-          background: 'linear-gradient(135deg, #1e3a5f 0%, #0f172a 100%)',
+          background: `linear-gradient(135deg, ${PALETTE.slateBlue} 0%, ${PALETTE.navy} 100%)`,
           borderRadius: '16px',
           padding: '20px',
           boxShadow: '0 10px 40px rgba(0, 0, 0, 0.3)',
@@ -179,7 +180,7 @@ export default function GamePage() {
 
         {/* Controls Info Card */}
         <div style={{
-          background: 'linear-gradient(135deg, #1e3a5f 0%, #0f172a 100%)',
+          background: `linear-gradient(135deg, ${PALETTE.slateBlue} 0%, ${PALETTE.navy} 100%)`,
           borderRadius: '16px',
           padding: '24px',
           marginTop: '20px',
@@ -188,7 +189,7 @@ export default function GamePage() {
           <div style={{
             fontSize: '10px',
             fontWeight: '800',
-            color: '#3b82f6',
+            color: PALETTE.orange,
             letterSpacing: '2px',
             marginBottom: '16px'
           }}>
@@ -202,8 +203,8 @@ export default function GamePage() {
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
               <div style={{
-                background: '#3b82f6',
-                color: '#ffffff',
+                background: PALETTE.slateBlue,
+                color: PALETTE.oxygen,
                 padding: '8px 16px',
                 borderRadius: '6px',
                 fontWeight: 'bold',
@@ -211,13 +212,13 @@ export default function GamePage() {
                 minWidth: '80px',
                 textAlign: 'center',
               }}>W / Up</div>
-              <span style={{ color: '#94a3b8' }}>Accelerate</span>
+              <span style={{ color: `${PALETTE.oxygen}66` }}>Accelerate</span>
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
               <div style={{
-                background: '#3b82f6',
-                color: '#ffffff',
+                background: PALETTE.slateBlue,
+                color: PALETTE.oxygen,
                 padding: '8px 16px',
                 borderRadius: '6px',
                 fontWeight: 'bold',
@@ -225,13 +226,13 @@ export default function GamePage() {
                 minWidth: '80px',
                 textAlign: 'center',
               }}>S / Down</div>
-              <span style={{ color: '#94a3b8' }}>Brake / Reverse</span>
+              <span style={{ color: `${PALETTE.oxygen}66` }}>Brake / Reverse</span>
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
               <div style={{
-                background: '#3b82f6',
-                color: '#ffffff',
+                background: PALETTE.slateBlue,
+                color: PALETTE.oxygen,
                 padding: '8px 16px',
                 borderRadius: '6px',
                 fontWeight: 'bold',
@@ -239,13 +240,13 @@ export default function GamePage() {
                 minWidth: '80px',
                 textAlign: 'center',
               }}>A / Left</div>
-              <span style={{ color: '#94a3b8' }}>Turn Left</span>
+              <span style={{ color: `${PALETTE.oxygen}66` }}>Turn Left</span>
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
               <div style={{
-                background: '#3b82f6',
-                color: '#ffffff',
+                background: PALETTE.slateBlue,
+                color: PALETTE.oxygen,
                 padding: '8px 16px',
                 borderRadius: '6px',
                 fontWeight: 'bold',
@@ -253,13 +254,13 @@ export default function GamePage() {
                 minWidth: '80px',
                 textAlign: 'center',
               }}>D / Right</div>
-              <span style={{ color: '#94a3b8' }}>Turn Right</span>
+              <span style={{ color: `${PALETTE.oxygen}66` }}>Turn Right</span>
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
               <div style={{
-                background: '#f97316',
-                color: '#ffffff',
+                background: PALETTE.orange,
+                color: PALETTE.navy,
                 padding: '8px 16px',
                 borderRadius: '6px',
                 fontWeight: 'bold',
@@ -267,7 +268,7 @@ export default function GamePage() {
                 minWidth: '80px',
                 textAlign: 'center',
               }}>SPACE</div>
-              <span style={{ color: '#94a3b8' }}>Handbrake / Drift</span>
+              <span style={{ color: `${PALETTE.oxygen}66` }}>Handbrake / Drift</span>
             </div>
           </div>
 
@@ -275,37 +276,37 @@ export default function GamePage() {
           <div style={{
             marginTop: '20px',
             padding: '16px',
-            background: 'rgba(59, 130, 246, 0.1)',
+            background: `${PALETTE.slateBlue}33`,
             borderRadius: '8px',
-            border: '1px solid rgba(59, 130, 246, 0.3)',
+            border: `1px solid ${PALETTE.slateBlue}aa`,
           }}>
             <div style={{
               fontSize: '10px',
               fontWeight: '800',
-              color: '#3b82f6',
+              color: PALETTE.orange,
               letterSpacing: '2px',
               marginBottom: '8px'
             }}>
               TIPS
             </div>
             <ul style={{
-              color: '#94a3b8',
+              color: `${PALETTE.oxygen}77`,
               fontSize: '14px',
               margin: 0,
               paddingLeft: '20px',
               lineHeight: '1.8',
             }}>
-              <li>Use <strong style={{ color: '#f97316' }}>SPACE</strong> to drift around corners for faster turns</li>
-              <li>Watch your <strong style={{ color: '#22c55e' }}>HEALTH BAR</strong> - hitting walls causes damage!</li>
-              <li>When health reaches 0, your car will <strong style={{ color: '#ef4444' }}>RESPAWN</strong> on the track</li>
-              <li>Stay on the <strong style={{ color: '#3b82f6' }}>OVAL TRACK</strong> - inner and outer walls both damage your car</li>
+              <li>Use <strong style={{ color: PALETTE.orange }}>SPACE</strong> to drift around corners for faster turns</li>
+              <li>Watch your <strong style={{ color: PALETTE.neonMint }}>HEALTH BAR</strong> - hitting walls cause damage!</li>
+              <li>When health reaches 0, your car will <strong style={{ color: PALETTE.orange }}>RESPAWN</strong> on the track</li>
+              <li>Stay on the <strong style={{ color: PALETTE.oxygen }}>OVAL TRACK</strong> - inner and outer walls both damage your car</li>
             </ul>
           </div>
         </div>
 
         {/* Players Info */}
         <div style={{
-          background: 'linear-gradient(135deg, #1e3a5f 0%, #0f172a 100%)',
+          background: `linear-gradient(135deg, ${PALETTE.slateBlue} 0%, ${PALETTE.navy} 100%)`,
           borderRadius: '16px',
           padding: '24px',
           marginTop: '20px',
@@ -314,7 +315,7 @@ export default function GamePage() {
           <div style={{
             fontSize: '10px',
             fontWeight: '800',
-            color: '#3b82f6',
+            color: PALETTE.orange,
             letterSpacing: '2px',
             marginBottom: '16px'
           }}>
@@ -328,8 +329,8 @@ export default function GamePage() {
           }}>
             {Object.entries(serverState).map(([id, state]) => (
               <div key={id} style={{
-                background: id === playerId ? 'rgba(34, 197, 94, 0.2)' : 'rgba(239, 68, 68, 0.2)',
-                border: `1px solid ${id === playerId ? '#22c55e' : '#ef4444'}`,
+                background: id === playerId ? `${PALETTE.neonMint}22` : `${PALETTE.orange}18`,
+                border: `1px solid ${id === playerId ? PALETTE.neonMint : PALETTE.orange}`,
                 borderRadius: '8px',
                 padding: '12px 20px',
                 display: 'flex',
@@ -340,18 +341,18 @@ export default function GamePage() {
                   width: '12px',
                   height: '12px',
                   borderRadius: '50%',
-                  backgroundColor: id === playerId ? '#22c55e' : '#ef4444',
+                  backgroundColor: id === playerId ? PALETTE.neonMint : PALETTE.orange,
                 }}></div>
                 <div>
                   <div style={{
-                    color: '#ffffff',
+                    color: PALETTE.oxygen,
                     fontWeight: 'bold',
                     fontSize: '14px'
                   }}>
                     {id === playerId ? 'You' : id.replace('_', ' ').toUpperCase()}
                   </div>
                   <div style={{
-                    color: '#64748b',
+                    color: `${PALETTE.oxygen}55`,
                     fontSize: '12px'
                   }}>
                     Health: {state.health || 100}%
@@ -370,13 +371,13 @@ export default function GamePage() {
           marginTop: '20px',
           padding: '0 4px',
         }}>
-          <span style={{ color: '#64748b', fontSize: '12px' }}>
+          <span style={{ color: `${PALETTE.oxygen}55`, fontSize: '12px' }}>
             Room: {roomId} | Players: {Object.keys(serverState).length}
           </span>
           <Link
             to="/lobby"
             style={{
-              color: '#3b82f6',
+              color: PALETTE.orange,
               fontSize: '14px',
               textDecoration: 'none',
               fontWeight: '600',

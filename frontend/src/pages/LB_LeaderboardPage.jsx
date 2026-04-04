@@ -67,7 +67,7 @@ const LB_LeaderboardPage = () => {
                    <h1>LEADERBOARD</h1>
                    <div style={{ width: '120px' }}></div>
                 </div>
-                <div style={{ textAlign:'center', marginTop: '10px', color: 'rgba(255,255,255,0.4)', fontSize: '0.7rem', letterSpacing: '4px' }}>SEASON 1 · LIVE RESULTS</div>
+                <div style={{ textAlign:'center', marginTop: '10px', color: 'rgba(224, 251, 252, 0.45)', fontSize: '0.7rem', letterSpacing: '4px' }}>SEASON 1 · LIVE RESULTS</div>
             </header>
 
             {error && <div className="error-message">{error}</div>}

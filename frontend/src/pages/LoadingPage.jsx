@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { loginUser, registerUser } from "../services/authService";
 import { clearNetworkPlayerId } from "../session/playerIdentity.js";
+import { PALETTE } from "../theme/midnightSpark.js";
 
 const CAR_COLORS = {
   red: { hex: "#ff3333", glow: "rgba(255,51,51,0.4)", name: "VIPER" },
@@ -15,17 +16,17 @@ const CAR_COLORS = {
 
 const ov = {
   bg: {
-    position: "fixed", inset: 0, background: "rgba(3,3,14,0.85)", zIndex: 9999,
+    position: "fixed", inset: 0, background: `${PALETTE.navy}e8`, zIndex: 9999,
     display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(12px)"
   },
   box: {
-    background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "16px",
+    background: `${PALETTE.slateBlue}44`, border: `1px solid ${PALETTE.slateBlue}aa`, borderRadius: "16px",
     padding: "26px 22px", width: "92vw", fontFamily: "'Inter', sans-serif",
-    position: "relative", maxHeight: "88vh", overflowY: "auto", boxShadow: "0 20px 40px rgba(0,0,0,0.5)"
+    position: "relative", maxHeight: "88vh", overflowY: "auto", boxShadow: `0 20px 40px ${PALETTE.navy}cc`
   },
   x: {
     position: "absolute", top: "12px", right: "14px", background: "transparent",
-    border: "none", color: "rgba(255,255,255,0.2)", fontSize: "15px", cursor: "pointer",
+    border: "none", color: `${PALETTE.oxygen}44`, fontSize: "15px", cursor: "pointer",
     padding: "4px 7px", transition: "color 0.2s"
   },
 };
@@ -55,13 +56,13 @@ function SettingsPanel({ onClose }) {
 
   return (
     <div style={ov.bg}>
-      <div style={{ ...ov.box, borderColor: "#3b8fff25", maxWidth: "430px" }}>
+      <div style={{ ...ov.box, borderColor: `${PALETTE.slateBlue}aa`, maxWidth: "430px" }}>
         <button onClick={onClose} style={ov.x}>✕</button>
         <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "18px" }}>
-          <span style={{ fontSize: "22px", color: "#00ffea" }}>⚙</span>
+          <span style={{ fontSize: "22px", color: PALETTE.orange }}>⚙</span>
           <div>
-            <div style={{ fontSize: "16px", fontWeight: 900, color: "#fff", letterSpacing: "4px", fontFamily: "'Orbitron', sans-serif" }}>SETTINGS</div>
-            <div style={{ fontSize: "8px", color: "rgba(255,255,255,0.3)", letterSpacing: "3px" }}>GAME PREFERENCES</div>
+            <div style={{ fontSize: "16px", fontWeight: 900, color: PALETTE.oxygen, letterSpacing: "4px", fontFamily: "'Orbitron', sans-serif" }}>SETTINGS</div>
+            <div style={{ fontSize: "8px", color: `${PALETTE.oxygen}55`, letterSpacing: "3px" }}>GAME PREFERENCES</div>
           </div>
         </div>
 
@@ -118,10 +119,10 @@ function SettingsPanel({ onClose }) {
         ))}
 
         <button onClick={onClose} style={{
-          width: "100%", padding: "11px", background: "#00a2ff",
-          color: "#000", border: "none", borderRadius: "7px", fontSize: "10px", fontWeight: "bold",
+          width: "100%", padding: "11px", background: PALETTE.orange,
+          color: PALETTE.navy, border: "none", borderRadius: "7px", fontSize: "10px", fontWeight: "bold",
           letterSpacing: "3px", fontFamily: "'Orbitron', sans-serif", cursor: "pointer",
-          boxShadow: "0 0 18px rgba(0,162,255,0.35)", transition: "all 0.3s"
+          boxShadow: `0 0 18px ${PALETTE.orange}66`, transition: "all 0.3s"
         }}
           onMouseEnter={e => e.currentTarget.style.transform = "translateY(-2px)"}
           onMouseLeave={e => e.currentTarget.style.transform = "translateY(0)"}>
@@ -134,20 +135,20 @@ function SettingsPanel({ onClose }) {
 
 
 const inputStyle = {
-  background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "8px",
-  padding: "12px 14px", color: "#fff", fontSize: "13px",
+  background: `${PALETTE.oxygen}08`, border: `1px solid ${PALETTE.slateBlue}88`, borderRadius: "8px",
+  padding: "12px 14px", color: PALETTE.oxygen, fontSize: "13px",
   fontFamily: "'Inter', sans-serif", width: "100%", outline: "none",
   transition: "all 0.2s"
 };
 
 const Field = ({ label, value, set, placeholder, type = "text", onSubmit, ...props }) => (
   <div style={{ display: "flex", flexDirection: "column", gap: "5px" }}>
-    <span style={{ fontSize: "9px", color: "rgba(255,255,255,0.4)", letterSpacing: "2px", fontFamily: "'Orbitron', sans-serif" }}>{label}</span>
+    <span style={{ fontSize: "9px", color: `${PALETTE.oxygen}88`, letterSpacing: "2px", fontFamily: "'Orbitron', sans-serif" }}>{label}</span>
     <input value={value} type={type} style={inputStyle}
       onChange={e => set(e.target.value)} placeholder={placeholder}
       onKeyDown={e => e.key === "Enter" && onSubmit && onSubmit()}
-      onFocus={e => e.target.style.borderColor = "#00ffea"}
-      onBlur={e => e.target.style.borderColor = "rgba(255,255,255,0.08)"}
+      onFocus={e => e.target.style.borderColor = PALETTE.orange}
+      onBlur={e => e.target.style.borderColor = `${PALETTE.slateBlue}88`}
       {...props} />
   </div>
 );
@@ -226,7 +227,7 @@ function AuthModal({ onSuccess, onClose }) {
           <span style={{ fontSize: "16px", color: car.hex, letterSpacing: "10px", fontWeight: 900, fontFamily: "'Orbitron', sans-serif", textShadow: `0 0 15px ${car.hex}50` }}>
             SPEED ARENA
           </span>
-          <div style={{ fontSize: "8px", color: "rgba(255,255,255,0.3)", letterSpacing: "4px", marginTop: "6px", fontFamily: "'Orbitron', sans-serif" }}>DRIVER ACCESS SYSTEMS</div>
+          <div style={{ fontSize: "8px", color: `${PALETTE.oxygen}55`, letterSpacing: "4px", marginTop: "6px", fontFamily: "'Orbitron', sans-serif" }}>DRIVER ACCESS SYSTEMS</div>
         </div>
 
         {/* Tab row */}
@@ -282,9 +283,9 @@ function AuthModal({ onSuccess, onClose }) {
           <div style={{
             fontSize: "10px", letterSpacing: "1px", padding: "10px", borderRadius: "5px",
             border: "1px solid", marginBottom: "15px", textAlign: "center",
-            color: msg.type === "err" ? "#ff4444" : "#00e87a",
-            borderColor: msg.type === "err" ? "#ff444420" : "#00e87a20",
-            background: msg.type === "err" ? "#ff44440a" : "#00e87a0a"
+            color: msg.type === "err" ? "#e85d5d" : PALETTE.neonMint,
+            borderColor: msg.type === "err" ? "#e85d5d33" : `${PALETTE.neonMint}33`,
+            background: msg.type === "err" ? "#e85d5d0f" : `${PALETTE.neonMint}12`
           }}>
             {msg.type === "err" ? "⚠ " : ""} {msg.text}
           </div>
@@ -374,10 +375,10 @@ export default function LoadingPage() {
 
       {/* Corner brackets */}
       {[
-        { top: 16, left: 16, borderTop: "2px solid #ff333348", borderLeft: "2px solid #ff333348", borderRight: "none", borderBottom: "none" },
-        { top: 16, right: 16, borderTop: "2px solid #3b8fff48", borderRight: "2px solid #3b8fff48", borderLeft: "none", borderBottom: "none" },
-        { bottom: 16, left: 16, borderBottom: "2px solid #ff333448", borderLeft: "2px solid #ff333448", borderTop: "none", borderRight: "none" },
-        { bottom: 16, right: 16, borderBottom: "2px solid #3b8fff48", borderRight: "2px solid #3b8fff48", borderTop: "none", borderLeft: "none" },
+        { top: 16, left: 16, borderTop: `2px solid ${PALETTE.orange}55`, borderLeft: `2px solid ${PALETTE.orange}55`, borderRight: "none", borderBottom: "none" },
+        { top: 16, right: 16, borderTop: `2px solid ${PALETTE.neonMint}44`, borderRight: `2px solid ${PALETTE.neonMint}44`, borderLeft: "none", borderBottom: "none" },
+        { bottom: 16, left: 16, borderBottom: `2px solid ${PALETTE.orange}55`, borderLeft: `2px solid ${PALETTE.orange}55`, borderTop: "none", borderRight: "none" },
+        { bottom: 16, right: 16, borderBottom: `2px solid ${PALETTE.slateBlue}aa`, borderRight: `2px solid ${PALETTE.slateBlue}aa`, borderTop: "none", borderLeft: "none" },
       ].map((s, i) => (
         <div key={i} style={{ position: "absolute", width: "28px", height: "28px", pointerEvents: "none", ...s }} />
       ))}
@@ -385,13 +386,13 @@ export default function LoadingPage() {
       {/* ── Top-left nav ── */}
       <div style={sc.topLeft}>
         <button onClick={() => navigate("/leaderboard")} style={sc.navBtn}
-          onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "#fff"; }}
-          onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.03)"; e.currentTarget.style.color = "rgba(255,255,255,0.6)"; }}>
+          onMouseEnter={e => { e.currentTarget.style.background = `${PALETTE.slateBlue}88`; e.currentTarget.style.color = PALETTE.oxygen; }}
+          onMouseLeave={e => { e.currentTarget.style.background = `${PALETTE.oxygen}08`; e.currentTarget.style.color = `${PALETTE.oxygen}99`; }}>
           <span>🏆</span><span>LEADERBOARD</span>
         </button>
-        <button onClick={() => setShowSettings(true)} style={{ ...sc.navBtn, color: "#00a2ff", borderColor: "rgba(0,162,255,0.2)" }}
-          onMouseEnter={e => { e.currentTarget.style.background = "rgba(0,162,255,0.1)"; e.currentTarget.style.color = "#00a2ff"; e.currentTarget.style.borderColor = "rgba(0,162,255,0.4)"; }}
-          onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.03)"; e.currentTarget.style.color = "#00a2ff"; e.currentTarget.style.borderColor = "rgba(0,162,255,0.2)"; }}>
+        <button onClick={() => setShowSettings(true)} style={{ ...sc.navBtn, color: PALETTE.orange, borderColor: `${PALETTE.orange}44` }}
+          onMouseEnter={e => { e.currentTarget.style.background = `${PALETTE.orange}22`; e.currentTarget.style.color = PALETTE.orange; e.currentTarget.style.borderColor = `${PALETTE.orange}66`; }}
+          onMouseLeave={e => { e.currentTarget.style.background = `${PALETTE.oxygen}08`; e.currentTarget.style.color = PALETTE.orange; e.currentTarget.style.borderColor = `${PALETTE.orange}44`; }}>
           <span>⚙</span><span>SETTINGS</span>
         </button>
       </div>
@@ -401,17 +402,17 @@ export default function LoadingPage() {
         {authedUser ? (
           <div style={sc.userBadge}>
             <span style={{
-              width: "7px", height: "7px", borderRadius: "50%", background: "#00e87a",
-              boxShadow: "0 0 6px #00e87a", display: "inline-block"
+              width: "7px", height: "7px", borderRadius: "50%", background: PALETTE.neonMint,
+              boxShadow: `0 0 6px ${PALETTE.neonMint}`, display: "inline-block"
             }} />
-            <span style={{ color: "#00e87a", fontSize: "9px", letterSpacing: "2px" }}>
+            <span style={{ color: PALETTE.neonMint, fontSize: "9px", letterSpacing: "2px" }}>
               {authedUser.toUpperCase()}
             </span>
           </div>
         ) : (
           <button onClick={() => setShowAuth(true)} style={sc.loginTopBtn}
-            onMouseEnter={e => { e.currentTarget.style.background = "rgba(0,162,255,0.15)"; e.currentTarget.style.transform = "translateY(-1px)"; }}
-            onMouseLeave={e => { e.currentTarget.style.background = "rgba(0,162,255,0.05)"; e.currentTarget.style.transform = "translateY(0)"; }}>
+            onMouseEnter={e => { e.currentTarget.style.background = `${PALETTE.orange}28`; e.currentTarget.style.transform = "translateY(-1px)"; }}
+            onMouseLeave={e => { e.currentTarget.style.background = `${PALETTE.orange}12`; e.currentTarget.style.transform = "translateY(0)"; }}>
             LOGIN / REGISTER
           </button>
         )}
@@ -420,7 +421,7 @@ export default function LoadingPage() {
       {/* ════════ PHASE 0 — Car race ════════ */}
       {phase === 0 && (
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "16px" }}>
-          <div style={{ color: "#00ffea", fontSize: "11px", letterSpacing: "5px", opacity: 0.7, fontFamily: "'Orbitron', sans-serif" }}>
+          <div style={{ color: PALETTE.oxygen, fontSize: "11px", letterSpacing: "5px", opacity: 0.85, fontFamily: "'Orbitron', sans-serif" }}>
             INITIALIZING TRACK SYSTEMS...
           </div>
           <div style={sc.track}>
@@ -429,20 +430,20 @@ export default function LoadingPage() {
               <svg width="90" height="32" viewBox="0 0 90 32">
                 <defs>
                   <radialGradient id="cg" cx="50%" cy="50%" r="50%">
-                    <stop offset="0%" stopColor="#00a2ff" stopOpacity="0.7" />
-                    <stop offset="100%" stopColor="#00a2ff" stopOpacity="0" />
+                    <stop offset="0%" stopColor={PALETTE.slateBlue} stopOpacity="0.7" />
+                    <stop offset="100%" stopColor={PALETTE.slateBlue} stopOpacity="0" />
                   </radialGradient>
                 </defs>
                 <ellipse cx="45" cy="22" rx="42" ry="9" fill="url(#cg)" opacity="0.5" />
-                <rect x="4" y="11" width="74" height="12" rx="3" fill="#00a2ff" />
-                <rect x="12" y="5" width="36" height="11" rx="4" fill="#60a5fa" />
+                <rect x="4" y="11" width="74" height="12" rx="3" fill={PALETTE.orange} />
+                <rect x="12" y="5" width="36" height="11" rx="4" fill={PALETTE.slateBlue} />
                 <rect x="18" y="7" width="24" height="7" rx="2" fill="rgba(0,0,0,0.45)" />
-                <rect x="6" y="7" width="8" height="4" rx="1" fill="#60a5fa" opacity="0.6" />
-                <rect x="76" y="8" width="8" height="4" rx="1" fill="#60a5fa" opacity="0.6" />
-                <rect x="10" y="21" width="18" height="7" rx="2" fill="#0a0a1a" stroke="#1d4ed8" strokeWidth="1" />
-                <rect x="55" y="21" width="18" height="7" rx="2" fill="#0a0a1a" stroke="#1d4ed8" strokeWidth="1" />
-                <ellipse cx="83" cy="14" rx="4" ry="3" fill="#ffd520" opacity="0.9" />
-                <ellipse cx="83" cy="14" rx="12" ry="8" fill="#ffd520" opacity="0.12" />
+                <rect x="6" y="7" width="8" height="4" rx="1" fill={PALETTE.oxygen} opacity="0.6" />
+                <rect x="76" y="8" width="8" height="4" rx="1" fill={PALETTE.oxygen} opacity="0.6" />
+                <rect x="10" y="21" width="18" height="7" rx="2" fill={PALETTE.navy} stroke={PALETTE.slateBlue} strokeWidth="1" />
+                <rect x="55" y="21" width="18" height="7" rx="2" fill={PALETTE.navy} stroke={PALETTE.slateBlue} strokeWidth="1" />
+                <ellipse cx="83" cy="14" rx="4" ry="3" fill={PALETTE.neonMint} opacity="0.9" />
+                <ellipse cx="83" cy="14" rx="12" ry="8" fill={PALETTE.neonMint} opacity="0.12" />
               </svg>
             </div>
           </div>
@@ -458,24 +459,24 @@ export default function LoadingPage() {
           <div style={{ ...sc.ring, animation: "spinRing 10s linear infinite" }} />
           <div style={{
             ...sc.ring, width: "380px", height: "380px",
-            borderColor: "rgba(59,143,255,0.055)",
+            borderColor: `${PALETTE.slateBlue}44`,
             animation: "spinRing 14s linear infinite reverse"
           }} />
 
           {/* Letters */}
           <div style={{ display: "flex", gap: "1px", position: "relative", zIndex: 2 }}>
             {"SPEED".split("").map((c, i) => (
-              <span key={i} style={letterStyle(i, "#ff3333")}>{c}</span>
+              <span key={i} style={letterStyle(i, PALETTE.orange)}>{c}</span>
             ))}
             <span style={{ width: "14px", display: "inline-block" }} />
             {"ARENA".split("").map((c, i) => (
-              <span key={i} style={letterStyle(i + 5, "#ffd520")}>{c}</span>
+              <span key={i} style={letterStyle(i + 5, PALETTE.oxygen)}>{c}</span>
             ))}
           </div>
 
           {/* Tagline */}
           <div style={{
-            color: "rgba(255,255,255,0.2)", fontSize: "11px", letterSpacing: "6px",
+            color: `${PALETTE.oxygen}44`, fontSize: "11px", letterSpacing: "6px",
             animation: "pulse 3s ease-in-out infinite",
             position: "relative", zIndex: 2, fontFamily: "'Orbitron', sans-serif"
           }}>
@@ -504,15 +505,15 @@ export default function LoadingPage() {
           <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
             <div style={{
               width: "40px", height: "1px",
-              background: "linear-gradient(90deg,transparent,#00ffea80)"
+              background: `linear-gradient(90deg,transparent,${PALETTE.orange}88)`
             }} />
-            <span style={{ fontSize: "8px", color: "rgba(0,255,234,0.5)", letterSpacing: "3px", fontFamily: "'Orbitron', sans-serif" }}>
+            <span style={{ fontSize: "8px", color: `${PALETTE.orange}aa`, letterSpacing: "3px", fontFamily: "'Orbitron', sans-serif" }}>
               {authedUser ? `READY, ${authedUser.toUpperCase()}` : "AUTHENTICATION REQUIRED"}
             </span>
           </div>
           <button onClick={handleEnterClick}
             style={{
-              background: "rgba(0,255,234,0.05)", border: "1px solid rgba(0,255,234,0.3)", color: "#00ffea",
+              background: `${PALETTE.orange}12`, border: `1px solid ${PALETTE.orange}55`, color: PALETTE.orange,
               padding: "15px 30px", borderRadius: "12px", cursor: "pointer",
               fontFamily: "'Orbitron', sans-serif", fontWeight: "bold",
               fontSize: "13px", letterSpacing: "4px",
@@ -520,15 +521,15 @@ export default function LoadingPage() {
               transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
               display: "flex", alignItems: "center", gap: "12px", backdropFilter: "blur(10px)"
             }}
-            onMouseEnter={e => { e.currentTarget.style.background = "#00ffea"; e.currentTarget.style.color = "#000"; e.currentTarget.style.boxShadow = "0 0 25px rgba(0,255,234,0.6)"; e.currentTarget.style.transform = "translateX(-5px)"; }}
-            onMouseLeave={e => { e.currentTarget.style.background = "rgba(0,255,234,0.05)"; e.currentTarget.style.color = "#00ffea"; e.currentTarget.style.boxShadow = "none"; e.currentTarget.style.transform = "translateX(0)"; }}>
+            onMouseEnter={e => { e.currentTarget.style.background = PALETTE.orange; e.currentTarget.style.color = PALETTE.navy; e.currentTarget.style.boxShadow = `0 0 25px ${PALETTE.orange}99`; e.currentTarget.style.transform = "translateX(-5px)"; }}
+            onMouseLeave={e => { e.currentTarget.style.background = `${PALETTE.orange}12`; e.currentTarget.style.color = PALETTE.orange; e.currentTarget.style.boxShadow = "none"; e.currentTarget.style.transform = "translateX(0)"; }}>
             {authedUser ? "ENTER ARENA" : "LOGIN & RACE"}
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none"
               stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
               <path d="M2 8h12M9 3l5 5-5 5" />
             </svg>
           </button>
-          <div style={{ fontSize: "7px", color: "#131325", letterSpacing: "2px" }}>v2.0.4 STABLE · SEASON 1</div>
+          <div style={{ fontSize: "7px", color: `${PALETTE.slateBlue}cc`, letterSpacing: "2px" }}>v2.0.4 STABLE · SEASON 1</div>
         </div>
       )}
 
@@ -537,7 +538,7 @@ export default function LoadingPage() {
         <div style={{
           position: "absolute", bottom: "28px", left: "50%", transform: "translateX(-50%)",
           display: "flex", alignItems: "center", gap: "12px",
-          fontSize: "9px", color: "rgba(255,255,255,0.15)", letterSpacing: "3px",
+          fontSize: "9px", color: `${PALETTE.oxygen}33`, letterSpacing: "3px",
           animation: "fadeUp 0.6s ease both 0.4s", fontFamily: "'Orbitron', sans-serif"
         }}>
           <span>⚡ WEBSOCKET LIVE</span>
@@ -578,15 +579,15 @@ export default function LoadingPage() {
           50%     { opacity:1;   }
         }
         @keyframes enterGlow {
-          0%,100% { box-shadow:0 0 18px rgba(0,255,234,0.2), 0 0 36px rgba(0,255,234,0.05); }
-          50%     { box-shadow:0 0 30px rgba(0,255,234,0.4), 0 0 55px rgba(0,255,234,0.1); }
+          0%,100% { box-shadow:0 0 18px ${PALETTE.orange}33, 0 0 36px ${PALETTE.orange}14; }
+          50%     { box-shadow:0 0 30px ${PALETTE.orange}55, 0 0 55px ${PALETTE.orange}22; }
         }
         @keyframes fadeUp {
           from { opacity:0; transform:translateY(18px); }
           to   { opacity:1; transform:translateY(0);    }
         }
-        input::placeholder { color:#1e1e3a; }
-        input:focus { border-color:#3b8fff !important; }
+        input::placeholder { color:${PALETTE.slateBlue}cc; }
+        input:focus { border-color:${PALETTE.orange} !important; }
         * { box-sizing:border-box; }
       `}</style>
     </div>
@@ -595,78 +596,139 @@ export default function LoadingPage() {
 
 const sc = {
   screen: {
-    background: "#03030e", minHeight: "100vh", overflow: "hidden",
-    position: "relative", fontFamily: "'Inter', sans-serif",
-    display: "flex", alignItems: "center", justifyContent: "center",
+    background: `linear-gradient(165deg, ${PALETTE.navy} 0%, ${PALETTE.slateBlue} 42%, ${PALETTE.navy} 100%)`,
+    minHeight: "100vh",
+    overflow: "hidden",
+    position: "relative",
+    fontFamily: "'Inter', sans-serif",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
   },
   scanLine: {
-    position: "absolute", left: 0, right: 0, height: "3px",
-    background: "linear-gradient(90deg,transparent,rgba(0,255,234,0.05),transparent)",
-    pointerEvents: "none", zIndex: 1, transition: "top 0.038s linear",
+    position: "absolute",
+    left: 0,
+    right: 0,
+    height: "3px",
+    background: `linear-gradient(90deg,transparent,${PALETTE.orange}22,transparent)`,
+    pointerEvents: "none",
+    zIndex: 1,
+    transition: "top 0.038s linear",
   },
   grid: {
-    position: "absolute", inset: 0,
-    backgroundImage: "linear-gradient(rgba(0,255,234,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(0,255,234,0.03) 1px,transparent 1px)",
-    backgroundSize: "50px 50px", pointerEvents: "none",
+    position: "absolute",
+    inset: 0,
+    backgroundImage: `linear-gradient(${PALETTE.oxygen}0c 1px,transparent 1px),linear-gradient(90deg,${PALETTE.slateBlue}55 1px,transparent 1px)`,
+    backgroundSize: "50px 50px",
+    pointerEvents: "none",
+    opacity: 0.55,
   },
   vignette: {
-    position: "absolute", inset: 0,
-    background: "radial-gradient(ellipse at center,transparent 30%,rgba(0,0,0,0.85) 100%)",
+    position: "absolute",
+    inset: 0,
+    background: `radial-gradient(ellipse at center,transparent 30%,${PALETTE.navy}ee 100%)`,
     pointerEvents: "none",
   },
   topLeft: {
-    position: "absolute", top: "18px", left: "22px",
-    display: "flex", gap: "9px", zIndex: 10,
+    position: "absolute",
+    top: "18px",
+    left: "22px",
+    display: "flex",
+    gap: "9px",
+    zIndex: 10,
   },
   navBtn: {
-    display: "flex", alignItems: "center", gap: "8px",
-    background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)",
-    color: "rgba(255,255,255,0.6)", padding: "8px 16px", borderRadius: "8px",
-    cursor: "pointer", fontSize: "10px", letterSpacing: "2px",
-    fontFamily: "'Orbitron', sans-serif", fontWeight: "bold",
-    backdropFilter: "blur(8px)", transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+    display: "flex",
+    alignItems: "center",
+    gap: "8px",
+    background: `${PALETTE.oxygen}08`,
+    border: `1px solid ${PALETTE.slateBlue}88`,
+    color: `${PALETTE.oxygen}99`,
+    padding: "8px 16px",
+    borderRadius: "8px",
+    cursor: "pointer",
+    fontSize: "10px",
+    letterSpacing: "2px",
+    fontFamily: "'Orbitron', sans-serif",
+    fontWeight: "bold",
+    backdropFilter: "blur(8px)",
+    transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
   },
   topRight: {
-    position: "absolute", top: "18px", right: "22px", zIndex: 10,
+    position: "absolute",
+    top: "18px",
+    right: "22px",
+    zIndex: 10,
   },
   userBadge: {
-    display: "flex", alignItems: "center", gap: "10px",
-    background: "rgba(255,255,255,0.03)", border: "1px solid rgba(0,232,122,0.2)",
-    padding: "8px 16px", borderRadius: "8px", backdropFilter: "blur(8px)",
+    display: "flex",
+    alignItems: "center",
+    gap: "10px",
+    background: `${PALETTE.oxygen}08`,
+    border: `1px solid ${PALETTE.neonMint}44`,
+    padding: "8px 16px",
+    borderRadius: "8px",
+    backdropFilter: "blur(8px)",
   },
   loginTopBtn: {
-    background: "rgba(0,162,255,0.05)", border: "1px solid rgba(0,162,255,0.2)",
-    color: "#00a2ff", padding: "8px 16px", borderRadius: "8px",
-    cursor: "pointer", fontSize: "10px", letterSpacing: "2px",
-    fontFamily: "'Orbitron', sans-serif", fontWeight: "bold",
-    backdropFilter: "blur(8px)", transition: "all 0.3s",
+    background: `${PALETTE.orange}12`,
+    border: `1px solid ${PALETTE.orange}44`,
+    color: PALETTE.orange,
+    padding: "8px 16px",
+    borderRadius: "8px",
+    cursor: "pointer",
+    fontSize: "10px",
+    letterSpacing: "2px",
+    fontFamily: "'Orbitron', sans-serif",
+    fontWeight: "bold",
+    backdropFilter: "blur(8px)",
+    transition: "all 0.3s",
   },
   track: {
-    width: "75vw", height: "70px",
-    background: "rgba(255,255,255,0.018)",
-    border: "1px solid rgba(255,255,255,0.05)", borderRadius: "6px",
-    position: "relative", overflow: "hidden",
-    display: "flex", flexDirection: "column", justifyContent: "space-around", padding: "10px 0",
+    width: "75vw",
+    height: "70px",
+    background: `${PALETTE.slateBlue}22`,
+    border: `1px solid ${PALETTE.slateBlue}88`,
+    borderRadius: "6px",
+    position: "relative",
+    overflow: "hidden",
+    display: "flex",
+    flexDirection: "column",
+    justifyContent: "space-around",
+    padding: "10px 0",
   },
   trackLine: {
     height: "2px",
-    background: "repeating-linear-gradient(90deg,rgba(255,255,255,0.09) 0,rgba(255,255,255,0.09) 24px,transparent 24px,transparent 48px)",
+    background: `repeating-linear-gradient(90deg,${PALETTE.oxygen}22 0,${PALETTE.oxygen}22 24px,transparent 24px,transparent 48px)`,
     animation: "dash 0.4s linear infinite",
   },
   carWrap: {
-    position: "absolute", top: "50%", transform: "translateY(-50%)",
+    position: "absolute",
+    top: "50%",
+    transform: "translateY(-50%)",
     animation: "carRace 2.2s ease-in-out forwards",
   },
   loadingBar: {
-    width: "75vw", height: "4px", background: "rgba(255,255,255,0.05)", borderRadius: "2px", overflow: "hidden",
+    width: "75vw",
+    height: "4px",
+    background: `${PALETTE.slateBlue}66`,
+    borderRadius: "2px",
+    overflow: "hidden",
   },
   loadingFill: {
-    height: "100%", background: "linear-gradient(90deg,#00ffea,#00a2ff)",
-    borderRadius: "2px", animation: "loadBar 2.2s ease-out forwards",
+    height: "100%",
+    background: `linear-gradient(90deg,${PALETTE.orange},${PALETTE.neonMint})`,
+    borderRadius: "2px",
+    animation: "loadBar 2.2s ease-out forwards",
   },
   ring: {
-    position: "absolute", width: "460px", height: "460px",
-    border: "1px solid rgba(0,255,234,0.08)", borderRadius: "50%",
-    top: "50%", left: "50%", pointerEvents: "none",
+    position: "absolute",
+    width: "460px",
+    height: "460px",
+    border: `1px solid ${PALETTE.orange}22`,
+    borderRadius: "50%",
+    top: "50%",
+    left: "50%",
+    pointerEvents: "none",
   },
 };
