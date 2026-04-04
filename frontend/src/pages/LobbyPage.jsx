@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import "../index.css";
@@ -53,9 +54,9 @@ export default function LobbyPage() {
           </button>
 
           <div style={{ margin: "24px 0", display: "flex", alignItems: "center", gap: "12px" }}>
-            <div style={{ flex: 1, height: "1px", background: "#e2e8f0" }}></div>
-            <span style={{ fontSize: "10px", fontWeight: "800", color: "#64748b" }}>OR JOIN CODE</span>
-            <div style={{ flex: 1, height: "1px", background: "#e2e8f0" }}></div>
+            <div style={{ flex: 1, height: "1px", background: "rgba(61, 90, 128, 0.6)" }}></div>
+            <span style={{ fontSize: "10px", fontWeight: "800", color: "rgba(224, 251, 252, 0.55)" }}>OR JOIN CODE</span>
+            <div style={{ flex: 1, height: "1px", background: "rgba(61, 90, 128, 0.6)" }}></div>
           </div>
 
           <form onSubmit={handleJoinRoom}>
@@ -66,7 +67,7 @@ export default function LobbyPage() {
               value={roomCode}
               onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
             />
-            <button className="sa-btn" type="submit" style={{ background: "#0f172a" }}>
+            <button className="sa-btn" type="submit" style={{ background: "#1A2A3A", color: "#E0FBFC", border: "1px solid rgba(61, 90, 128, 0.8)" }}>
               Join Room
             </button>
           </form>

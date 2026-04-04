@@ -1,19 +1,20 @@
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Inter:wght@300;400;600;800&display=swap');
 
 :root {
-  --neon-cyan: #00ffea;
-  --neon-blue: #00a2ff;
-  --neon-gold: #ffd520;
-  --neon-red: #ff3333;
-  --bg-dark: #03030e;
-  --glass: rgba(255, 255, 255, 0.03);
-  --glass-border: rgba(255, 255, 255, 0.08);
+  --neon-cyan: #E0FBFC;
+  --neon-blue: #3D5A80;
+  --neon-gold: #FF9F1C;
+  --neon-red: #FF9F1C;
+  --neon-mint: #98FF98;
+  --bg-dark: #1A2A3A;
+  --glass: rgba(224, 251, 252, 0.06);
+  --glass-border: rgba(61, 90, 128, 0.65);
 }
 
 .leaderboard-container {
   min-height: 100vh;
-  background: var(--bg-dark);
-  color: #fff;
+  background: linear-gradient(165deg, var(--bg-dark) 0%, #2a4a66 45%, var(--bg-dark) 100%);
+  color: var(--neon-cyan);
   padding: 2rem;
   font-family: 'Inter', sans-serif;
   position: relative;
@@ -25,7 +26,7 @@
   content: "";
   position: absolute;
   top: 0; left: 0; right: 0; bottom: 0;
-  background: radial-gradient(circle at 50% 0%, rgba(0, 255, 234, 0.08) 0%, transparent 70%);
+  background: radial-gradient(circle at 50% 0%, rgba(255, 159, 28, 0.08) 0%, transparent 70%);
   pointer-events: none;
 }
 
@@ -48,7 +49,7 @@
   -webkit-text-fill-color: transparent;
 
   margin: 0;
-  filter: drop-shadow(0 0 20px rgba(0, 255, 234, 0.3));
+  filter: drop-shadow(0 0 20px rgba(255, 159, 28, 0.35));
 }
 
 .back-btn {
@@ -57,14 +58,15 @@
   font-size: 0.7rem;
   letter-spacing: 2px;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  background: rgba(0, 255, 234, 0.05) !important;
-  border: 1px solid rgba(0, 255, 234, 0.3) !important;
+  color: var(--neon-cyan) !important;
+  background: rgba(255, 159, 28, 0.08) !important;
+  border: 1px solid rgba(255, 159, 28, 0.35) !important;
 }
 
 .back-btn:hover {
-  background: var(--neon-cyan) !important;
-  color: #000 !important;
-  box-shadow: 0 0 20px rgba(0, 255, 234, 0.5);
+  background: var(--neon-gold) !important;
+  color: var(--bg-dark) !important;
+  box-shadow: 0 0 20px rgba(255, 159, 28, 0.55);
   transform: translateX(-5px);
 }
 

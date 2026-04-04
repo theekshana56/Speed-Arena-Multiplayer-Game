@@ -1,16 +1,18 @@
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Inter:wght@300;400;600;800&display=swap');
 
 :root {
-  --neon-cyan:    #00ffea;
-  --neon-blue:    #00a2ff;
-  --neon-gold:    #ffd520;
-  --neon-red:     #ff3333;
-  --neon-green:   #00e87a;
-  --bg-dark:      #03030e;
-  --glass:        rgba(255, 255, 255, 0.03);
-  --glass-border: rgba(255, 255, 255, 0.08);
-  --text-white:   #ffffff;
-  --scanline-color: rgba(0, 255, 234, 0.02);
+  /* Midnight Spark (aligned with Game Home) */
+  --neon-cyan:    #E0FBFC;
+  --neon-blue:    #3D5A80;
+  --neon-gold:    #FF9F1C;
+  --neon-red:     #FF9F1C;
+  --neon-green:   #98FF98;
+  --neon-orange:  #FF9F1C;
+  --bg-dark:      #1A2A3A;
+  --glass:        rgba(224, 251, 252, 0.06);
+  --glass-border: rgba(61, 90, 128, 0.65);
+  --text-white:   #E0FBFC;
+  --scanline-color: rgba(224, 251, 252, 0.04);
 }
 
 *, *::before, *::after {
@@ -24,9 +26,9 @@
   min-height: 100vh;
   background-color: var(--bg-dark);
   background-image:
-    radial-gradient(circle at 15% 25%, rgba(0, 255, 234, 0.08) 0%, transparent 60%),
-    radial-gradient(circle at 85% 75%, rgba(0, 162, 255, 0.08) 0%, transparent 55%),
-    radial-gradient(circle at 50% 50%, rgba(255, 213, 32, 0.02) 0%, transparent 50%);
+    radial-gradient(circle at 15% 25%, rgba(255, 159, 28, 0.07) 0%, transparent 60%),
+    radial-gradient(circle at 85% 75%, rgba(61, 90, 128, 0.35) 0%, transparent 55%),
+    radial-gradient(circle at 50% 50%, rgba(152, 255, 152, 0.04) 0%, transparent 50%);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -44,8 +46,8 @@
   position: absolute;
   inset: 0;
   background-image:
-    linear-gradient(rgba(255, 51, 51, 0.02) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0, 255, 234, 0.02) 1px, transparent 1px);
+    linear-gradient(rgba(224, 251, 252, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(61, 90, 128, 0.35) 1px, transparent 1px);
   background-size: 60px 60px;
   pointer-events: none;
   z-index: 2;

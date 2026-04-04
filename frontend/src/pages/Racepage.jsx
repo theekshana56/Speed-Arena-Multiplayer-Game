@@ -10,6 +10,7 @@ import { getStartPositionsFromLayout } from "../game/carPhysics";
 import { buildPolylineGameLayoutForMap, canonicalMapId, normalizeMapId } from "../game/track/polylineTrack.js";
 import { getOrCreateNetworkPlayerId } from "../session/playerIdentity.js";
 import { clampGridSlot } from "../utils/gridSlot.js";
+import { PALETTE } from "../theme/midnightSpark.js";
 
 const PREFER_UNITY_RACE = import.meta.env.VITE_USE_UNITY_RACE !== "false";
 
@@ -51,6 +52,8 @@ export default function RacePage() {
   const [log, setLog] = useState([]);
   const [resultsSent, setResultsSent] = useState(false);
   const [raceStats, setRaceStats] = useState(null);
+  /** idle | saving | saved | error — controls leaderboard CTA (bug 2: no auto-nav). */
+  const [resultSaveState, setResultSaveState] = useState("idle");
 
   const startTimeRef = useRef(null);
   const topSpeedRef = useRef(0);
@@ -143,9 +146,13 @@ export default function RacePage() {
             }
           }
 
-          // Only trigger winner overlay if we are currently racing and a winner is found
-          // (prevents old race data from immediately re-triggering the overlay after clicking RE-DEPLOY)
-          if (car.lapsCompleted >= 3 && !winnerRef.current && isRacingRef.current) {
+          // Only the *local* player's finish should open results — remote finishes are in `cars` only.
+          if (
+            car.lapsCompleted >= 3 &&
+            !winnerRef.current &&
+            isRacingRef.current &&
+            String(car.playerId) === String(playerIdRef.current)
+          ) {
             setWinner(car.playerId);
           }
         });
@@ -240,6 +247,7 @@ export default function RacePage() {
     startTimeRef.current = Date.now();
     setResultsSent(false);
     setRaceStats(null);
+    setResultSaveState("idle");
     addLog("🏁 Mission initialized!");
   };
 
@@ -416,6 +424,7 @@ export default function RacePage() {
   // ── Results & Achievements ──
   useEffect(() => {
     if (winner && !resultsSent) {
+      if (String(winner) !== String(playerId)) return;
       const finishTime = Date.now();
       const currentStartTime = startTimeRef.current || finishTime;
       const totalTime = (finishTime - currentStartTime) / 1000;
@@ -471,6 +480,7 @@ export default function RacePage() {
       if (totalTime < 24) stats.achievements.push("LIGHTNING FAST");
       if (rank > 0) stats.achievements.push("DEVOYED");
 
+      setResultSaveState("saving");
       setRaceStats(stats);
       setResultsSent(true);
 
@@ -493,10 +503,10 @@ export default function RacePage() {
             headers,
             body: JSON.stringify(payload)
           });
-          // After saving, show the leaderboard immediately.
-          navigate("/leaderboard");
+          setResultSaveState("saved");
         } catch (err) {
           console.error(">>> ERROR SAVING RESULT:", err);
+          setResultSaveState("error");
         }
       };
       
@@ -556,7 +566,7 @@ export default function RacePage() {
             </div>
 
             <div style={s.achievementsBox}>
-              <div style={{ fontSize:"10px", color:"#ffd520", letterSpacing:"4px", marginBottom:"12px", fontFamily: "'Orbitron'" }}>AWARDS OBTAINED</div>
+              <div style={{ fontSize:"10px", color: PALETTE.orange, letterSpacing:"4px", marginBottom:"12px", fontFamily: "'Orbitron'" }}>AWARDS OBTAINED</div>
               <div style={{ display:"flex", gap:"10px", flexWrap:"wrap", justifyContent:"center" }}>
                 {raceStats.achievements.map(a => (
                   <span key={a} style={s.badge}>{a}</span>
@@ -564,19 +574,41 @@ export default function RacePage() {
               </div>
             </div>
 
-            <div style={s.winnerBtns}>
+            <div style={s.winnerBtnStack}>
+              <button
+                type="button"
+                disabled={resultSaveState === "saving"}
+                onClick={() => {
+                  if (resultSaveState === "saving") return;
+                  navigate("/leaderboard");
+                }}
+                style={{
+                  ...s.lbBtn,
+                  opacity: resultSaveState === "saving" ? 0.45 : 1,
+                  cursor: resultSaveState === "saving" ? "not-allowed" : "pointer",
+                }}
+              >
+                {resultSaveState === "saving"
+                  ? "SAVING RESULT…"
+                  : resultSaveState === "error"
+                    ? "VIEW LEADERBOARD (SAVE FAILED)"
+                    : "VIEW LEADERBOARD"}
+              </button>
+              <div style={s.winnerBtns}>
               <button onClick={() => { 
                 setWinner(null); 
                 setLaps(0); 
                 lapRef.current = 0; 
                 setResultsSent(false); 
                 setRaceStats(null);
+                setResultSaveState("idle");
                 setCars({});
                 setStartAtEpochMs(null);
                 sessionStorage.removeItem("startAtEpochMs");
                 setIsRacing(false);
               }} style={{ ...s.playAgainBtn, background: color, boxShadow: `0 0 20px ${color}40` }}>RE-DEPLOY</button>
               <button onClick={() => navigate("/home")} style={s.homeBtn}>← TERMINAL</button>
+              </div>
             </div>
           </div>
         </div>
@@ -595,8 +627,8 @@ export default function RacePage() {
 
         <div style={s.hudRight}>
           <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-            <span style={{ width: "8px", height: "8px", borderRadius: "50%", background: connected ? "#00e87a" : "#ff3333", display: "inline-block", boxShadow: `0 0 10px ${connected ? "#00e87a" : "#ff3333"}` }} />
-            <span style={{ fontSize: "10px", color: connected ? "#00e87a" : "#ff3333", letterSpacing: "2px", fontWeight: "bold" }}>{connected ? "SYNC LIVE" : "LINK OFFLINE"}</span>
+            <span style={{ width: "8px", height: "8px", borderRadius: "50%", background: connected ? PALETTE.neonMint : PALETTE.orange, display: "inline-block", boxShadow: `0 0 10px ${connected ? PALETTE.neonMint : PALETTE.orange}` }} />
+            <span style={{ fontSize: "10px", color: connected ? PALETTE.neonMint : PALETTE.orange, letterSpacing: "2px", fontWeight: "bold" }}>{connected ? "SYNC LIVE" : "LINK OFFLINE"}</span>
           </div>
           <div style={{ fontSize: "10px", color: "rgba(255,255,255,0.3)", letterSpacing: "1px", fontFamily: "'Orbitron'" }}>
             {Object.keys(cars).length} ACTIVE LINKS
@@ -671,7 +703,7 @@ export default function RacePage() {
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  background: "rgba(3,3,14,0.65)",
+                  background: "rgba(26, 42, 58, 0.82)",
                   backdropFilter: "blur(10px)",
                   zIndex: 5,
                   pointerEvents: "none",
@@ -682,7 +714,7 @@ export default function RacePage() {
                   <div style={{ fontSize: "11px", letterSpacing: "6px", color: "rgba(255,255,255,0.35)", marginBottom: "16px" }}>
                     RACE STARTS IN
                   </div>
-                  <div style={{ fontSize: "120px", fontWeight: "900", color: "#ffd520", textShadow: "0 0 40px rgba(255,213,32,0.35)" }}>
+                  <div style={{ fontSize: "120px", fontWeight: "900", color: PALETTE.orange, textShadow: `0 0 40px ${PALETTE.orange}55` }}>
                     {countdownLeft}
                   </div>
                 </div>
@@ -719,12 +751,12 @@ export default function RacePage() {
                     .sort((a, b) => b.lapsCompleted - a.lapsCompleted)
                     .map((car, i) => (
                         <div key={car.playerId} style={{ ...s.leaderRow, background: car.playerId === playerId ? `${color}10` : "transparent", padding: "4px", borderRadius: "4px" }}>
-                        <span style={{ color: i === 0 ? "#ffd520" : "rgba(255,255,255,0.2)", fontSize: "11px", fontWeight: "bold", width: "18px" }}>#{i + 1}</span>
+                        <span style={{ color: i === 0 ? PALETTE.orange : `${PALETTE.oxygen}33`, fontSize: "11px", fontWeight: "bold", width: "18px" }}>#{i + 1}</span>
                         <div style={{ width: "12px", height: "8px", borderRadius: "2px", background: CAR_COLORS[car.carColor] || "#fff" }} />
                         <span style={{ flex: 1, fontSize: "10px", color: car.playerId === playerId ? "#fff" : "rgba(255,255,255,0.4)", fontWeight: car.playerId === playerId ? "bold" : "normal" }}>
                             {car.playerId.substring(0, 10).toUpperCase()}
                         </span>
-                        <span style={{ fontSize: "10px", color: "#ffd520", fontWeight: "bold" }}>L{car.lapsCompleted}</span>
+                        <span style={{ fontSize: "10px", color: PALETTE.orange, fontWeight: "bold" }}>L{car.lapsCompleted}</span>
                         </div>
                     ))
                 }
@@ -752,31 +784,124 @@ export default function RacePage() {
 }
 
 const s = {
-  screen: { background: "#03030e", minHeight: "100vh", color: "#fff", fontFamily: "'Orbitron', sans-serif", display: "flex", flexDirection: "column", position: "relative" },
-  grid: { position: "fixed", inset: 0, backgroundImage: "linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px)", backgroundSize: "60px 60px", pointerEvents: "none" },
-  winnerOverlay: { position: "fixed", inset: 0, background: "rgba(3,3,14,0.96)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(20px)" },
-  winnerCard: { background: "rgba(255, 255, 255, 0.03)", border: "1px solid", borderRadius: "24px", padding: "50px", textAlign: "center", display: "flex", flexDirection: "column", gap: "20px", alignItems: "center" },
-  winnerTrophy: { fontSize: "80px", filter: "drop-shadow(0 0 20px rgba(255,213,32,0.4))" },
-  winnerTitle: { fontSize: "12px", color: "rgba(255,255,255,0.3)", letterSpacing: "6px" },
+  screen: {
+    background: `linear-gradient(165deg, ${PALETTE.navy} 0%, ${PALETTE.slateBlue} 42%, ${PALETTE.navy} 100%)`,
+    minHeight: "100vh",
+    color: PALETTE.oxygen,
+    fontFamily: "'Orbitron', sans-serif",
+    display: "flex",
+    flexDirection: "column",
+    position: "relative",
+  },
+  grid: {
+    position: "fixed",
+    inset: 0,
+    backgroundImage: `linear-gradient(${PALETTE.oxygen}0f 1px, transparent 1px), linear-gradient(90deg, ${PALETTE.slateBlue}55 1px, transparent 1px)`,
+    backgroundSize: "60px 60px",
+    pointerEvents: "none",
+    opacity: 0.45,
+  },
+  winnerOverlay: { position: "fixed", inset: 0, background: `${PALETTE.navy}f5`, zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(20px)" },
+  winnerCard: {
+    background: `${PALETTE.slateBlue}44`,
+    border: `1px solid ${PALETTE.slateBlue}aa`,
+    borderRadius: "24px",
+    padding: "50px",
+    textAlign: "center",
+    display: "flex",
+    flexDirection: "column",
+    gap: "20px",
+    alignItems: "center",
+  },
+  winnerTrophy: { fontSize: "80px", filter: `drop-shadow(0 0 20px ${PALETTE.orange}55)` },
+  winnerTitle: { fontSize: "12px", color: `${PALETTE.oxygen}88`, letterSpacing: "6px" },
   winnerName: { fontSize: "48px", fontWeight: "900", letterSpacing: "6px" },
-  winnerBtns: { display: "flex", gap: "16px", marginTop: "20px" },
-  playAgainBtn: { color: "#000", border: "none", borderRadius: "10px", padding: "14px 32px", fontSize: "13px", letterSpacing: "3px", fontFamily: "'Orbitron'", fontWeight: "900", cursor: "pointer", transition: "all 0.3s" },
-  homeBtn: { background: "rgba(255,255,255,0.03)", color: "rgba(255,255,255,0.4)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "10px", padding: "14px 32px", fontSize: "13px", letterSpacing: "3px", fontFamily: "'Orbitron'", cursor: "pointer", transition: "all 0.3s" },
-  hud: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "20px 48px", borderBottom: "1px solid rgba(255,255,255,0.05)", background: "rgba(0,0,0,0.3)", backdropFilter: "blur(10px)" },
-  backBtn: { background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.4)", padding: "10px 18px", borderRadius: "6px", cursor: "pointer", fontSize: "10px", letterSpacing: "2px", fontFamily: "'Orbitron'", transition: "all 0.3s" },
+  winnerBtnStack: { display: "flex", flexDirection: "column", gap: "12px", width: "100%", marginTop: "20px", alignItems: "stretch" },
+  winnerBtns: { display: "flex", gap: "16px", justifyContent: "center", flexWrap: "wrap" },
+  lbBtn: {
+    width: "100%",
+    background: `linear-gradient(180deg, ${PALETTE.orange}, #e8890a)`,
+    color: PALETTE.navy,
+    border: `1px solid ${PALETTE.orange}`,
+    borderRadius: "10px",
+    padding: "16px 24px",
+    fontSize: "12px",
+    letterSpacing: "4px",
+    fontFamily: "'Orbitron'",
+    fontWeight: "900",
+    transition: "all 0.3s",
+  },
+  playAgainBtn: { color: PALETTE.navy, border: "none", borderRadius: "10px", padding: "14px 32px", fontSize: "13px", letterSpacing: "3px", fontFamily: "'Orbitron'", fontWeight: "900", cursor: "pointer", transition: "all 0.3s" },
+  homeBtn: {
+    background: `${PALETTE.oxygen}08`,
+    color: `${PALETTE.oxygen}99`,
+    border: `1px solid ${PALETTE.slateBlue}aa`,
+    borderRadius: "10px",
+    padding: "14px 32px",
+    fontSize: "13px",
+    letterSpacing: "3px",
+    fontFamily: "'Orbitron'",
+    cursor: "pointer",
+    transition: "all 0.3s",
+  },
+  hud: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: "20px 48px",
+    borderBottom: `1px solid ${PALETTE.slateBlue}99`,
+    background: `linear-gradient(180deg, ${PALETTE.slateBlue}55, ${PALETTE.navy}cc)`,
+    backdropFilter: "blur(10px)",
+  },
+  backBtn: {
+    background: `${PALETTE.oxygen}08`,
+    border: `1px solid ${PALETTE.slateBlue}aa`,
+    color: `${PALETTE.oxygen}99`,
+    padding: "10px 18px",
+    borderRadius: "6px",
+    cursor: "pointer",
+    fontSize: "10px",
+    letterSpacing: "2px",
+    fontFamily: "'Orbitron'",
+    transition: "all 0.3s",
+  },
   hudCenter: { display: "flex", alignItems: "center", gap: "24px" },
   lapDisplay: { fontSize: "14px", fontWeight: "bold", letterSpacing: "4px" },
   hudRight: { display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "6px" },
   main: { display: "flex", gap: "32px", padding: "32px 48px", flex: 1, alignItems: "flex-start", flexWrap: "wrap", justifyContent: "center" },
   sidePanel: { width: "240px", display: "flex", flexDirection: "column", gap: "16px" },
-  card: { background: "rgba(255, 255, 255, 0.03)", backdropFilter: "blur(12px)", border: "1px solid rgba(255,255,255,0.05)", borderRadius: "16px", padding: "20px" },
-  cardLabel: { fontSize: "9px", color: "rgba(255,255,255,0.3)", letterSpacing: "4px", marginBottom: "12px" },
+  card: {
+    background: `${PALETTE.slateBlue}33`,
+    backdropFilter: "blur(12px)",
+    border: `1px solid ${PALETTE.slateBlue}88`,
+    borderRadius: "16px",
+    padding: "20px",
+  },
+  cardLabel: { fontSize: "9px", color: `${PALETTE.oxygen}88`, letterSpacing: "4px", marginBottom: "12px" },
   raceBtn: { width: "100%", padding: "14px", border: "none", borderRadius: "10px", fontSize: "12px", fontWeight: "900", letterSpacing: "3px", fontFamily: "'Orbitron'", cursor: "pointer", transition: "all 0.3s" },
   leaderRow: { display: "flex", alignItems: "center", gap: "10px" },
-  statsGrid: { display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "30px", width: "100%", margin: "24px 0", borderTop: "1px solid rgba(255,255,255,0.05)", borderBottom: "1px solid rgba(255,255,255,0.05)", padding: "24px 0" },
+  statsGrid: {
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr 1fr",
+    gap: "30px",
+    width: "100%",
+    margin: "24px 0",
+    borderTop: `1px solid ${PALETTE.slateBlue}88`,
+    borderBottom: `1px solid ${PALETTE.slateBlue}88`,
+    padding: "24px 0",
+  },
   statItem: { display: "flex", flexDirection: "column", gap: "6px" },
-  statLabel: { fontSize: "9px", color: "rgba(255,255,255,0.3)", letterSpacing: "2px" },
-  statValue: { fontSize: "18px", fontWeight: "bold", color: "#fff" },
+  statLabel: { fontSize: "9px", color: `${PALETTE.oxygen}88`, letterSpacing: "2px" },
+  statValue: { fontSize: "18px", fontWeight: "bold", color: PALETTE.oxygen },
   achievementsBox: { marginBottom: "20px" },
-  badge: { background: "rgba(255, 213, 32, 0.1)", color: "#ffd520", border: "1px solid rgba(255, 213, 32, 0.2)", borderRadius: "100px", padding: "6px 16px", fontSize: "10px", fontWeight: "bold", letterSpacing: "1px" },
+  badge: {
+    background: `${PALETTE.orange}18`,
+    color: PALETTE.orange,
+    border: `1px solid ${PALETTE.orange}44`,
+    borderRadius: "100px",
+    padding: "6px 16px",
+    fontSize: "10px",
+    fontWeight: "bold",
+    letterSpacing: "1px",
+  },
 };
