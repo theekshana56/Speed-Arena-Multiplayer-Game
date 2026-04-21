@@ -53,7 +53,8 @@ public class LB_GameResult {
     private LocalDateTime createdAt;
 
     public LB_GameResult() {}
-
+    
+    //for creating new result
     public LB_GameResult(Long id, Integer playerId, String playerName, Integer roomId, Integer position, Double totalTime, Double topSpeed, String achievements, LocalDateTime createdAt) {
         this.id = id;
         this.playerId = playerId;
@@ -67,7 +68,7 @@ public class LB_GameResult {
     }
 
 
-
+    //getters and setters
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 

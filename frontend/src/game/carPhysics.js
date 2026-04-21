@@ -11,7 +11,7 @@ import {
 
 export { FOREST_SCALE, getStartPositionsFromLayout } from './track/trackGeometry.js';
 
-// ─── Physics Constants ──────────────────────────────────────────────────────
+// physics constants
 
 export const TOP_SPEED = 720.0;
 export const MAX_REVERSE_SPEED = 250.0;

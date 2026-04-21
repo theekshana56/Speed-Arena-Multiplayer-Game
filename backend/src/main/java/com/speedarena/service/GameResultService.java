@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 
+//Service layer for handling game results and leaderboard logic.
 @Service
 public class GameResultService {
 
