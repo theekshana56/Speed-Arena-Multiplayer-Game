@@ -25,7 +25,7 @@ export const KEY_ACTIONS = {
   KeyW: 'accelerate',
   ArrowUp: 'accelerate',
 
-  // Brake / Reverse
+  // Brake and Reverse
   KeyS: 'brake',
   ArrowDown: 'brake',
 

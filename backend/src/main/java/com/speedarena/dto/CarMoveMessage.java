@@ -16,7 +16,7 @@ public class CarMoveMessage {
 
     // ─── Player Identity ────────────────────────────────────────────────────────
 
-    /** Unique player ID */
+    //player id
     private String playerId;
 
     /** Room this player is in */
