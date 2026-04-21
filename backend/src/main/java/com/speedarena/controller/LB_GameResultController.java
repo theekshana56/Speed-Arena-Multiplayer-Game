@@ -34,7 +34,7 @@ public class LB_GameResultController {
     }
 
 
-    // Get Leaderboard Top 10
+    // leadership board for top 10
     @GetMapping("/leaderboard")
     public ResponseEntity<List<LB_GameResult>> getLeaderboard() {
         List<LB_GameResult> leaderboard = service.getLeaderboard();

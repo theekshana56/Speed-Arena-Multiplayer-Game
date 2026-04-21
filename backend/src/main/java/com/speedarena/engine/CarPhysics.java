@@ -56,7 +56,7 @@ public class CarPhysics {
             }
             angle = normalizeAngle(angle);
         }
-
+        // car angle
         double intendedVx = Math.cos(angle) * speed;
         double intendedVy = Math.sin(angle) * speed;
         double grip = handbrake ? HANDBRAKE_GRIP : GRIP;
