@@ -23,6 +23,14 @@ const CAR_COLORS = {
   yellow: "#ffd520" 
 };
 
+const getFinishOrderValue = (car) => {
+  const finish = Number(car?.finishTime ?? 0);
+  if (Number.isFinite(finish) && finish > 0) return finish;
+  const ts = Number(car?.timestamp ?? 0);
+  if (Number.isFinite(ts) && ts > 0) return ts;
+  return Number.MAX_SAFE_INTEGER;
+};
+
 // Legacy waitpoints removed
 
 export default function RacePage() {
@@ -377,6 +385,26 @@ export default function RacePage() {
   };
 
   const countdownLeft = startAtEpochMs ? Math.max(0, Math.ceil((startAtEpochMs - nowMs) / 1000)) : null;
+  const leaderboardCars = useMemo(() => {
+    return [...Object.values(cars)]
+      .sort((a, b) => {
+        const aFinished = a?.status === "FINISHED" || (a?.lapsCompleted ?? 0) >= 3;
+        const bFinished = b?.status === "FINISHED" || (b?.lapsCompleted ?? 0) >= 3;
+
+        if (aFinished && bFinished) {
+          const byFinishTime = getFinishOrderValue(a) - getFinishOrderValue(b);
+          if (byFinishTime !== 0) return byFinishTime;
+          return String(a.playerId).localeCompare(String(b.playerId));
+        }
+        if (aFinished && !bFinished) return -1;
+        if (!aFinished && bFinished) return 1;
+
+        const lapDiff = (b?.lapsCompleted ?? 0) - (a?.lapsCompleted ?? 0);
+        if (lapDiff !== 0) return lapDiff;
+
+        return (b?.timestamp ?? 0) - (a?.timestamp ?? 0);
+      });
+  }, [cars]);
 
   const handleUnityLocalCarState = (jsonStr) => {
     let o;
@@ -425,7 +453,8 @@ export default function RacePage() {
   useEffect(() => {
     if (winner && !resultsSent) {
       if (String(winner) !== String(playerId)) return;
-      const finishTime = Date.now();
+      const localCar = Object.values(cars).find((c) => String(c?.playerId) === String(playerId));
+      const finishTime = Number(localCar?.finishTime) > 0 ? Number(localCar.finishTime) : Date.now();
       const currentStartTime = startTimeRef.current || finishTime;
       const totalTime = (finishTime - currentStartTime) / 1000;
       const finalTopSpeed = topSpeedRef.current;
@@ -451,19 +480,21 @@ export default function RacePage() {
       // Backend does not reliably fill `totalTime` in realtime updates.
       // Prefer finishTime (epoch ms) if present; otherwise fall back to timestamp.
       const finishersSorted = Object.values(cars)
-          .filter(c => c?.status === "FINISHED")
+          .filter(c => c?.status === "FINISHED" || (c?.lapsCompleted ?? 0) >= 3)
           .sort((a, b) => {
-            const af = (a.finishTime ?? a.timestamp ?? 0);
-            const bf = (b.finishTime ?? b.timestamp ?? 0);
-            // Both may be 0 early; keep deterministic order by playerId.
-            if (!af && !bf) return String(a.playerId).localeCompare(String(b.playerId));
-            return af - bf;
+            const byFinishTime = getFinishOrderValue(a) - getFinishOrderValue(b);
+            if (byFinishTime !== 0) return byFinishTime;
+            return String(a.playerId).localeCompare(String(b.playerId));
           });
 
       let rank = finishersSorted.findIndex(c => c.playerId === playerId) + 1;
-      
       if (rank <= 0) {
-          rank = (winner === playerId) ? 1 : finishersSorted.length + 1;
+        const isEarlier = (car) => {
+          const carFinish = getFinishOrderValue(car);
+          if (carFinish !== finishTime) return carFinish < finishTime;
+          return String(car?.playerId).localeCompare(String(playerId)) < 0;
+        };
+        rank = finishersSorted.filter(isEarlier).length + 1;
       }
 
       const stats = {
@@ -747,9 +778,7 @@ export default function RacePage() {
             <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
                 {Object.keys(cars).length === 0
                 ? <div style={{ fontSize: "10px", color: "rgba(255,255,255,0.2)", letterSpacing: "1px" }}>Searching for signals...</div>
-                : [...Object.values(cars)]
-                    .sort((a, b) => b.lapsCompleted - a.lapsCompleted)
-                    .map((car, i) => (
+                : leaderboardCars.map((car, i) => (
                         <div key={car.playerId} style={{ ...s.leaderRow, background: car.playerId === playerId ? `${color}10` : "transparent", padding: "4px", borderRadius: "4px" }}>
                         <span style={{ color: i === 0 ? PALETTE.orange : `${PALETTE.oxygen}33`, fontSize: "11px", fontWeight: "bold", width: "18px" }}>#{i + 1}</span>
                         <div style={{ width: "12px", height: "8px", borderRadius: "2px", background: CAR_COLORS[car.carColor] || "#fff" }} />

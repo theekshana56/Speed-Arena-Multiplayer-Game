@@ -5,24 +5,8 @@ import com.speedarena.model.PlayerState;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 
-/**
- * WinnerDetector - Handles race completion, winner declaration, and results.
- *
- * Responsibilities:
- * ─────────────────────────────────────────────────────────────────────────────
- * 1. Detect when first player finishes 3 laps (WINNER)
- * 2. Track finish positions for all players
- * 3. Handle race end conditions (all finished, time limit, etc.)
- * 4. Generate final race results/standings
- *
- * Events triggered:
- * - WINNER_DECLARED: First player crosses finish line on lap 3
- * - RACE_COMPLETE: All players have finished
- * - RACE_ENDED: Time limit reached (optional)
- */
 @Component
 public class WinnerDetector {
 
@@ -135,28 +119,27 @@ public class WinnerDetector {
             results.add(result);
         }
 
-        // Sort: Finished players first (by position), then by laps completed
+        // Sort: Finished players first (by finish time), then by laps completed.
+        // This guarantees the first player crossing the line is always rank 1.
         results.sort((a, b) -> {
             if (a.finished && !b.finished) return -1;
             if (!a.finished && b.finished) return 1;
             if (a.finished && b.finished) {
-                return Integer.compare(a.finishPosition, b.finishPosition);
+                int byTime = Long.compare(a.finishTimeMs, b.finishTimeMs);
+                if (byTime != 0) return byTime;
+                int byRecordedPosition = Integer.compare(a.finishPosition, b.finishPosition);
+                if (byRecordedPosition != 0) return byRecordedPosition;
+                return String.valueOf(a.playerId).compareTo(String.valueOf(b.playerId));
             }
             // Both DNF - sort by laps completed
-            return Integer.compare(b.lapsCompleted, a.lapsCompleted);
+            int byLaps = Integer.compare(b.lapsCompleted, a.lapsCompleted);
+            if (byLaps != 0) return byLaps;
+            return String.valueOf(a.playerId).compareTo(String.valueOf(b.playerId));
         });
 
-        // Assign positions to DNF players
-        int position = results.stream()
-                .filter(r -> r.finished)
-                .mapToInt(r -> r.finishPosition)
-                .max()
-                .orElse(0);
-
-        for (RaceResult result : results) {
-            if (!result.finished && result.finishPosition == 0) {
-                result.finishPosition = ++position;
-            }
+        // Re-assign positions based on sorted order so leaderboard is consistent.
+        for (int i = 0; i < results.size(); i++) {
+            results.get(i).finishPosition = i + 1;
         }
 
         return results;
