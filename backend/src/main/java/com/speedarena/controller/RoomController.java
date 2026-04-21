@@ -1,62 +1,54 @@
 package com.speedarena.controller;
 
-import com.speedarena.model.Player;
+import com.speedarena.dto.RoomCreateRequest;
+import com.speedarena.dto.RoomJoinRequest;
+import com.speedarena.dto.RoomResponse;
 import com.speedarena.model.Room;
 import com.speedarena.service.RoomService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/rooms")
-@CrossOrigin
+@CrossOrigin(origins = "*")
 public class RoomController {
 
     private final RoomService roomService;
 
+    @Autowired
     public RoomController(RoomService roomService) {
         this.roomService = roomService;
     }
 
-    // ✅ CREATE ROOM
     @PostMapping("/create")
-    public Map<String, Object> createRoom() {
-        return roomService.createRoom();
+    public ResponseEntity<RoomResponse> createRoom(@RequestBody RoomCreateRequest request) {
+        Room room = roomService.createRoom(request);
+        return ResponseEntity.ok(new RoomResponse(room));
     }
 
-    // ✅ JOIN ROOM
-    @PostMapping("/join")
-    public Map<String, Object> joinRoom(@RequestBody Map<String, String> request) {
-
-        String roomCode = request.get("roomCode");
-
-        if (roomCode == null || roomCode.trim().isEmpty()) {
-            throw new RuntimeException("Room code missing ❌");
-        }
-
-        roomCode = roomCode.trim().toUpperCase();
-
-        return roomService.joinRoom(roomCode);
+    @PostMapping("/join/{roomCode}")
+    public ResponseEntity<RoomResponse> joinRoom(@PathVariable String roomCode, @RequestBody RoomJoinRequest request) {
+        return roomService.joinRoom(roomCode, request)
+                .map(room -> ResponseEntity.ok(new RoomResponse(room)))
+                .orElse(ResponseEntity.badRequest().build());
     }
 
-    // ✅ GET ROOM (FOR WAITING ROOM)
     @GetMapping("/{roomCode}")
-    public Map<String, Object> getRoom(@PathVariable String roomCode) {
+    public ResponseEntity<RoomResponse> getRoom(@PathVariable String roomCode) {
+        return roomService.getRoomByCode(roomCode)
+                .map(room -> ResponseEntity.ok(new RoomResponse(room)))
+                .orElse(ResponseEntity.notFound().build());
+    }
 
-        Room room = roomService.getRoom(roomCode);
-
-        if (room == null) {
-            throw new RuntimeException("Room not found ❌");
-        }
-
-        List<Player> players = room.getPlayers();
-
-        Map<String, Object> response = new HashMap<>();
-        response.put("roomCode", room.getRoomCode());
-        response.put("players", players);
-
-        return response;
+    @GetMapping("/list")
+    public ResponseEntity<List<RoomResponse>> listRooms() {
+        List<RoomResponse> rooms = roomService.getAllActiveRooms().stream()
+                .map(RoomResponse::new)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(rooms);
     }
 }

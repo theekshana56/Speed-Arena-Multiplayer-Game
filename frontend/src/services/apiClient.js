@@ -1,16 +1,15 @@
-const BASE_URL = "http://localhost:8080"; // Spring Boot
+const BASE_URL = "http://127.0.0.1:8080"; // Using explicit IP for local stability
 
 export async function apiFetch(path, options = {}) {
+  const { headers, ...rest } = options;
 
-  const finalOptions = {
-    ...options,
+  const res = await fetch(BASE_URL + path, {
+    ...rest,
     headers: {
       "Content-Type": "application/json",
-      ...(options.headers || {}),
+      ...(headers || {}),
     },
-  };
-
-  const res = await fetch(BASE_URL + path, finalOptions);
+  });
 
   const text = await res.text();
   let data = {};
@@ -22,7 +21,9 @@ export async function apiFetch(path, options = {}) {
   }
 
   if (!res.ok) {
-    throw new Error(data.message || "Request failed");
+    const errorMsg = data.message || data.error || text || "Request failed";
+    console.error(`[API ERROR] ${path}:`, errorMsg);
+    throw new Error(errorMsg);
   }
 
   return data;

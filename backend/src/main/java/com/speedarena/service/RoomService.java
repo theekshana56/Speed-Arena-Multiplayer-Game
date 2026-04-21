@@ -1,86 +1,62 @@
 package com.speedarena.service;
 
-import com.speedarena.model.Player;
+import com.speedarena.dto.RoomCreateRequest;
+import com.speedarena.dto.RoomJoinRequest;
 import com.speedarena.model.Room;
-import com.speedarena.repository.PlayerRepository;
 import com.speedarena.repository.RoomRepository;
 import com.speedarena.util.RoomCodeGenerator;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
+import java.util.Optional;
 
 @Service
 public class RoomService {
 
     private final RoomRepository roomRepository;
-    private final PlayerRepository playerRepository;
 
-    public RoomService(RoomRepository roomRepository, PlayerRepository playerRepository) {
+    @Autowired
+    public RoomService(RoomRepository roomRepository) {
         this.roomRepository = roomRepository;
-        this.playerRepository = playerRepository;
     }
 
-    // ✅ CREATE ROOM + ADD CREATOR
-    public Map<String, Object> createRoom() {
-
-        String code = RoomCodeGenerator.generateCode();
-
-        Room room = new Room();
-        room.setRoomCode(code);
-        roomRepository.save(room);
-
-        // ✅ ADD CREATOR AS PLAYER 1
-        Player player = new Player();
-        player.setUsername("Player1");
-        player.setRoom(room);
-        playerRepository.save(player);
-
-        // ✅ RELOAD ROOM WITH PLAYERS
-        Room updatedRoom = roomRepository.findWithPlayers(code);
-
-        Map<String, Object> response = new HashMap<>();
-        response.put("roomCode", updatedRoom.getRoomCode());
-        response.put("players", updatedRoom.getPlayers());
-
-        return response;
+    public Room createRoom(RoomCreateRequest request) {
+        String roomCode = RoomCodeGenerator.generateCode();
+        Room room = new Room(roomCode, request.getHostUsername(), request.getMaxPlayers());
+        return roomRepository.save(room);
     }
 
-    // ✅ JOIN ROOM
-    public Map<String, Object> joinRoom(String code) {
-
-        code = code.trim().toUpperCase();
-
-        Room room = roomRepository.findWithPlayers(code);
-
-        if (room == null) {
-            throw new RuntimeException("Room not found ❌");
+    public Optional<Room> joinRoom(String roomCode, RoomJoinRequest request) {
+        Optional<Room> roomOpt = roomRepository.findByRoomCode(roomCode);
+        if (roomOpt.isPresent()) {
+            Room room = roomOpt.get();
+            if (room.getCurrentPlayers() < room.getMaxPlayers() && "WAITING".equals(room.getStatus())) {
+                room.setCurrentPlayers(room.getCurrentPlayers() + 1);
+                return Optional.of(roomRepository.save(room));
+            }
         }
-
-        List<Player> players = room.getPlayers();
-
-        if (players.size() >= 4) {
-            throw new RuntimeException("Room is full ❌");
-        }
-
-        Player player = new Player();
-        player.setUsername("Player" + (players.size() + 1));
-        player.setRoom(room);
-        playerRepository.save(player);
-
-        // ✅ RELOAD ROOM AGAIN WITH PLAYERS
-        Room updatedRoom = roomRepository.findWithPlayers(code);
-
-        Map<String, Object> response = new HashMap<>();
-        response.put("roomCode", updatedRoom.getRoomCode());
-        response.put("players", updatedRoom.getPlayers());
-
-        return response;
+        return Optional.empty();
     }
 
-    // ✅ GET ROOM
-    public Room getRoom(String code) {
-        return roomRepository.findWithPlayers(code.trim().toUpperCase());
+    public Optional<Room> getRoomByCode(String roomCode) {
+        return roomRepository.findByRoomCode(roomCode);
+    }
+
+    public List<Room> getAllActiveRooms() {
+        return roomRepository.findAll();
+    }
+
+    public void updateRoomStatus(String roomCode, String status) {
+        roomRepository.findByRoomCode(roomCode).ifPresent(room -> {
+            room.setStatus(status);
+            roomRepository.save(room);
+        });
+    }
+
+    public void deleteRoom(String roomCode) {
+        roomRepository.findByRoomCode(roomCode).ifPresent(room -> {
+            roomRepository.delete(room);
+        });
     }
 }
