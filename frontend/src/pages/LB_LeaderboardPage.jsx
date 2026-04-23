@@ -124,7 +124,7 @@ const LB_LeaderboardPage = () => {
                     width: 40px;
                     height: 40px;
                     border: 2px solid rgba(0, 255, 234, 0.1);
-                    border-top: 2px solid #00ffea;
+                    border-top: 2px solid #08f8e4;
                     border-radius: 50%;
                     margin: 0 auto;
                     animation: spin 1s linear infinite;

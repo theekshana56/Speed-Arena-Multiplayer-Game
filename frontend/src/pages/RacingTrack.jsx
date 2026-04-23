@@ -182,11 +182,11 @@ export default function RacingTrack() {
     };
 
     // Curbs (Red/White stripes)
-    drawPath(54, "#fff"); // Base white
-    drawPath(54, "#ff0000", [20, 20]); // Red stripes
+    drawPath(54, "#f0eded"); // Base white
+    drawPath(54, "#fa0f0f", [20, 20]); // Red stripes
 
     // Main Tarmac
-    drawPath(46, "#4A4A4A");
+    drawPath(46, "#535151");
 
     // Center Line
     drawPath(2, "rgba(255,255,255,0.5)", [10, 15]);
