@@ -27,17 +27,31 @@ export default function RoomLobbyPage() {
   // Pull session data set by GameHomePage
   const carColor   = sessionStorage.getItem("carColor")   || "red";
   const roomId     = sessionStorage.getItem("roomId")     || "ROOM01";
-  const isHost     = sessionStorage.getItem("isHost")     === "true";
+  const [isHost, setIsHost] = useState(() => sessionStorage.getItem("isHost") === "true");
 
   const playerId = useMemo(() => getOrCreateNetworkPlayerId(), []);
 
   const [players, setPlayers]     = useState([]);
   const [connected, setConnected] = useState(false);
   const [mapId, setMapId] = useState(() => canonicalMapId(sessionStorage.getItem("mapId")));
+  const [lapsTarget, setLapsTarget] = useState(() => {
+    const v = Number(sessionStorage.getItem("lapsTarget"));
+    return v === 1 || v === 3 || v === 5 ? v : 3;
+  });
   const [slots, setSlots] = useState({});
   const [copied, setCopied]       = useState(false);
   const [dots, setDots]           = useState(".");
   const clientRef = useRef(null);
+  const hasPublishedJoinRef = useRef(false);
+
+  const leaveRoomAndGoHome = () => {
+    clientRef.current?.publish({
+      destination: "/app/player.leave",
+      body: JSON.stringify({ roomId, playerId }),
+    });
+    clientRef.current?.deactivate();
+    navigate("/home");
+  };
 
   // Waiting dots animation
   useEffect(() => {
@@ -75,6 +89,11 @@ export default function RoomLobbyPage() {
             const data = JSON.parse(msg.body);
             if (data?.startAtEpochMs) sessionStorage.setItem("startAtEpochMs", String(data.startAtEpochMs));
             if (data?.mapId) sessionStorage.setItem("mapId", canonicalMapId(data.mapId));
+            const n = Number(data?.lapCount);
+            if (n === 1 || n === 3 || n === 5) {
+              setLapsTarget(n);
+              sessionStorage.setItem("lapsTarget", String(n));
+            }
           } catch {
             // ignore
           }
@@ -89,6 +108,12 @@ export default function RoomLobbyPage() {
             if (!newMap) return;
             setMapId(newMap);
             sessionStorage.setItem("mapId", newMap);
+            const hostId = data?.hostPlayerId;
+            if (typeof hostId === "string" && hostId.length > 0) {
+              const mine = hostId === playerId;
+              setIsHost(mine);
+              sessionStorage.setItem("isHost", mine ? "true" : "false");
+            }
           } catch {
             // ignore
           }
@@ -102,6 +127,29 @@ export default function RoomLobbyPage() {
             const mySlot = data?.[playerId];
             if (typeof mySlot === "number") {
               sessionStorage.setItem("startIndex", String(mySlot));
+              const mine = mySlot === 0;
+              setIsHost(mine);
+              sessionStorage.setItem("isHost", mine ? "true" : "false");
+            }
+          } catch {
+            // ignore
+          }
+        });
+
+        // Subscribe to host-selected lap target
+        client.subscribe(`/topic/room/${roomId}/laps`, (msg) => {
+          try {
+            const data = JSON.parse(msg.body);
+            const n = Number(data?.lapCount);
+            if (n === 1 || n === 3 || n === 5) {
+              setLapsTarget(n);
+              sessionStorage.setItem("lapsTarget", String(n));
+            }
+            const hostId = data?.hostPlayerId;
+            if (typeof hostId === "string" && hostId.length > 0) {
+              const mine = hostId === playerId;
+              setIsHost(mine);
+              sessionStorage.setItem("isHost", mine ? "true" : "false");
             }
           } catch {
             // ignore
@@ -116,11 +164,14 @@ export default function RoomLobbyPage() {
     client.activate();
     clientRef.current = client;
 
-    return () => client.deactivate();
+    return () => {
+      hasPublishedJoinRef.current = false;
+      client.deactivate();
+    };
   }, []);
 
   useEffect(() => {
-    if (!connected || !clientRef.current) return;
+    if (!connected || !clientRef.current || hasPublishedJoinRef.current) return;
     const raw = typeof slots[playerId] === "number"
       ? slots[playerId]
       : Number(sessionStorage.getItem("startIndex"));
@@ -138,7 +189,8 @@ export default function RoomLobbyPage() {
         gridSlot: clampGridSlot(raw),
       }),
     });
-  }, [connected, slots, playerId, roomId, carColor]);
+    hasPublishedJoinRef.current = true;
+  }, [connected, playerId, roomId, carColor, slots]);
 
   // Countdown removed
 
@@ -147,7 +199,7 @@ export default function RoomLobbyPage() {
     // Broadcast start signal to all players in this room
     clientRef.current?.publish({
       destination: `/app/game.start`,
-      body: JSON.stringify({ roomId }),
+      body: JSON.stringify({ roomId, playerId }),
     });
   };
 
@@ -163,6 +215,17 @@ export default function RoomLobbyPage() {
     });
   };
 
+  const selectLaps = (lapCount) => {
+    if (!connected) return;
+    if (![1, 3, 5].includes(lapCount)) return;
+    setLapsTarget(lapCount);
+    sessionStorage.setItem("lapsTarget", String(lapCount));
+    clientRef.current?.publish({
+      destination: "/app/room.laps.select",
+      body: JSON.stringify({ roomId, hostPlayerId: playerId, lapCount }),
+    });
+  };
+
   const copyCode = () => {
     navigator.clipboard.writeText(roomId).catch(() => {});
     setCopied(true);
@@ -170,7 +233,7 @@ export default function RoomLobbyPage() {
   };
 
   const myColor = CAR_COLORS[carColor] || "#ff3333";
-  const canStart = players.length >= 2 && !!mapId;
+  const canStart = players.length >= 1 && !!mapId;
 
   return (
     <div style={s.screen}>
@@ -180,7 +243,7 @@ export default function RoomLobbyPage() {
 
       {/* ── Header ── */}
       <div style={s.header}>
-        <button onClick={() => { clientRef.current?.deactivate(); navigate("/home"); }} style={s.backBtn}>
+        <button onClick={leaveRoomAndGoHome} style={s.backBtn}>
           ← BACK
         </button>
         <div style={{ textAlign: "center" }}>
@@ -248,7 +311,7 @@ export default function RoomLobbyPage() {
             {[
               ["PROTOCOL", "WEBSOCKET-SECURE"],
               ["MAP", mapId ? mapId.toUpperCase() : (isHost ? "SELECT MAP" : "WAITING MAP")],
-              ["OBJECTIVE", "3 LAPS"],
+              ["OBJECTIVE", `${lapsTarget} LAP${lapsTarget > 1 ? "S" : ""}`],
               ["SYNC", "REAL-TIME"],
             ].map(([k, v]) => (
               <div key={k} style={s.detailRow}>
@@ -295,6 +358,37 @@ export default function RoomLobbyPage() {
               </div>
               <div style={{ marginTop: "10px", fontSize: "10px", color: "rgba(255,255,255,0.25)", letterSpacing: "2px", fontFamily: "'Orbitron', sans-serif" }}>
                 {mapId ? `SELECTED: ${mapId.toUpperCase()}` : "SELECT A MAP TO ENABLE START"}
+              </div>
+
+              <div style={{ marginTop: "16px", fontSize: "10px", color: "rgba(255,255,255,0.6)", letterSpacing: "2px", fontFamily: "'Orbitron', sans-serif" }}>
+                LAPS
+              </div>
+              <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", marginTop: "8px" }}>
+                {[1, 3, 5].map((n) => {
+                  const active = lapsTarget === n;
+                  return (
+                    <button
+                      key={n}
+                      onClick={() => selectLaps(n)}
+                      style={{
+                        width: "auto",
+                        padding: "10px 12px",
+                        borderRadius: "10px",
+                        fontSize: "11px",
+                        fontWeight: "900",
+                        letterSpacing: "2px",
+                        fontFamily: "'Orbitron', sans-serif",
+                        transition: "all 0.25s",
+                        background: active ? myColor : "rgba(255,255,255,0.03)",
+                        color: active ? "#000" : "rgba(255,255,255,0.7)",
+                        border: `1px solid ${active ? myColor : "rgba(255,255,255,0.08)"}`,
+                        cursor: "pointer",
+                      }}
+                    >
+                      {n} LAP{n > 1 ? "S" : ""}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           )}
@@ -385,8 +479,8 @@ export default function RoomLobbyPage() {
               }}>
               {canStart
                 ? "🏁 INITIALIZE RACE"
-                : players.length < 2
-                  ? `⏳ AWAITING ${2 - players.length > 0 ? 2 - players.length : 0} MORE DRIVER${players.length < 1 ? "S" : ""}...`
+                : players.length < 1
+                  ? "⏳ AWAITING 1 DRIVER..."
                   : "🗺️ SELECT MAP..."}
             </button>
           ) : (

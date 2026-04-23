@@ -163,7 +163,7 @@ export default function SHA_TestPanel() {
       onConnect: () => {
         setConnected(true);
         addLog(`⚡ ${playerId} LINK ESTABLISHED`);
-        client.subscribe("/topic/game-state", (msg) => {
+        client.subscribe(`/topic/room/${roomId}/game-state`, (msg) => {
           const car = JSON.parse(msg.body);
           setCars((prev) => ({ ...prev, [car.playerId]: car }));
         });

@@ -20,6 +20,11 @@ function randomSuffix() {
 
 export function getOrCreateNetworkPlayerId() {
   try {
+    const existing = sessionStorage.getItem(STORAGE_KEY);
+    if (existing && existing.trim()) {
+      return existing;
+    }
+
     const display = sessionStorage.getItem("playerName") || sessionStorage.getItem("username") || "player";
     // React StrictMode (dev) may remount components and rerun this function.
     // If we generate a new suffix each time, the backend thinks it's a new player

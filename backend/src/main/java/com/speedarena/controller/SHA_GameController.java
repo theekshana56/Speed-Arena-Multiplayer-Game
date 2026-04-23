@@ -18,7 +18,7 @@ import java.util.concurrent.ConcurrentHashMap;
  *
  * ─── Message Flow (35% scope) ────────────────────────────────────────────────
  *
- *   Frontend sends  →  /app/car.move         → handleCarMove()   → /topic/game-state
+ *   Frontend sends  →  /app/car.move         → handleCarMove()   → /topic/room/{roomId}/game-state
  *   Frontend sends  →  /app/player.join      → handlePlayerJoin()→ /topic/room/{roomId}
  *   Frontend sends  →  /app/game.ping        → handlePing()      → /topic/pong
  *
@@ -61,6 +61,7 @@ public class SHA_GameController {
         String hostPlayerId;
         String mapId;
         Long startAtEpochMs;
+        int lapCount = 3;
     }
 
     public SHA_GameController(SimpMessagingTemplate messagingTemplate) {
@@ -76,13 +77,13 @@ public class SHA_GameController {
      * Updates in-memory state, then broadcasts to ALL players in that room.
      *
      * Frontend sends to:  /app/car.move
-     * All clients get:    /topic/game-state
-     *
-     * The @SendTo broadcasts the RETURN VALUE to the topic.
+     * Room clients get:   /topic/room/{roomId}/game-state
      */
     @MessageMapping("/car.move")
-    @SendTo("/topic/game-state")
-    public SHA_CarState handleCarMove(SHA_CarState carState) {
+    public void handleCarMove(SHA_CarState carState) {
+        if (carState == null || carState.getPlayerId() == null || carState.getPlayerId().isBlank()) {
+            return;
+        }
         // Stamp the server time so clients can detect stale packets
         carState.setTimestamp(System.currentTimeMillis());
 
@@ -95,7 +96,8 @@ public class SHA_GameController {
             .put(carState.getPlayerId(), carState);
 
         // Check if this player just finished a lap
-        if (carState.getLapsCompleted() >= 3 && !"FINISHED".equals(carState.getStatus())) {
+        int lapTarget = getLapTarget(roomId);
+        if (carState.getLapsCompleted() >= lapTarget && !"FINISHED".equals(carState.getStatus())) {
             carState.setStatus("FINISHED");
             
             // Set first-time finish timestamp if not already set in memory
@@ -116,7 +118,7 @@ public class SHA_GameController {
 
 
         System.out.println("[CAR_MOVE] " + carState);
-        return carState;
+        messagingTemplate.convertAndSend("/topic/room/" + roomId + "/game-state", carState);
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -132,6 +134,10 @@ public class SHA_GameController {
      */
     @MessageMapping("/player.join")
     public void handlePlayerJoin(SHA_CarState carState) {
+        if (carState == null || carState.getPlayerId() == null || carState.getPlayerId().isBlank()) {
+            return;
+        }
+
         String roomId = carState.getRoomId() != null ? carState.getRoomId() : "default";
         carState.setStatus("WAITING");
         carState.setTimestamp(System.currentTimeMillis());
@@ -142,22 +148,20 @@ public class SHA_GameController {
             order.add(carState.getPlayerId());
         }
 
-        // Register the player
-        gameRooms
-            .computeIfAbsent(roomId, k -> new ConcurrentHashMap<>())
-            .put(carState.getPlayerId(), carState);
+        // Register player and make joins idempotent (same player can re-publish join safely)
+        Map<String, SHA_CarState> room = gameRooms.computeIfAbsent(roomId, k -> new ConcurrentHashMap<>());
+        SHA_CarState previous = room.put(carState.getPlayerId(), carState);
+        boolean isFirstJoin = previous == null;
 
-        System.out.println("[PLAYER_JOIN] " + carState.getPlayerId() + " joined room: " + roomId);
-
-        // Broadcast join event to the room's topic
-        messagingTemplate.convertAndSend(
-            "/topic/room/" + roomId,
-            carState
-        );
+        if (isFirstJoin) {
+            System.out.println("[PLAYER_JOIN] " + carState.getPlayerId() + " joined room: " + roomId);
+            // Broadcast join event only on first join to avoid event storms.
+            messagingTemplate.convertAndSend("/topic/room/" + roomId, carState);
+        }
 
         // Also send the current list of players in the room to the new joiner
         List<SHA_CarState> currentPlayers = new ArrayList<>(
-            gameRooms.get(roomId).values()
+            room.values()
         );
         messagingTemplate.convertAndSend(
             "/topic/room/" + roomId + "/players",
@@ -179,6 +183,12 @@ public class SHA_GameController {
             msg.put("hostPlayerId", meta.hostPlayerId != null ? meta.hostPlayerId : "");
             messagingTemplate.convertAndSend("/topic/room/" + roomId + "/map", msg);
         }
+        if (meta != null) {
+            Map<String, Object> lapsMsg = new HashMap<>();
+            lapsMsg.put("lapCount", meta.lapCount > 0 ? meta.lapCount : 3);
+            lapsMsg.put("hostPlayerId", meta.hostPlayerId != null ? meta.hostPlayerId : "");
+            messagingTemplate.convertAndSend("/topic/room/" + roomId + "/laps", lapsMsg);
+        }
 
         // If a race has already been started and countdown is in progress, sync start time to late joiners.
         if (meta != null && meta.startAtEpochMs != null && meta.startAtEpochMs > System.currentTimeMillis()) {
@@ -187,6 +197,51 @@ public class SHA_GameController {
             startMsg.put("mapId", meta.mapId != null ? meta.mapId : "");
             messagingTemplate.convertAndSend("/topic/room/" + roomId + "/start", startMsg);
         }
+    }
+
+    /**
+     * Player leaves room explicitly (e.g., presses TERMINAL/HOME).
+     * Keeps remaining players in room without forcing global reset.
+     */
+    @MessageMapping("/player.leave")
+    public void handlePlayerLeave(Map<String, String> payload) {
+        if (payload == null) return;
+        String roomId = payload.get("roomId");
+        String playerId = payload.get("playerId");
+        if (roomId == null || roomId.isBlank() || playerId == null || playerId.isBlank()) return;
+
+        Map<String, SHA_CarState> room = gameRooms.get(roomId);
+        if (room != null) {
+            room.remove(playerId);
+            if (room.isEmpty()) {
+                gameRooms.remove(roomId);
+            }
+        }
+
+        List<String> order = roomPlayersOrder.get(roomId);
+        if (order != null) {
+            order.remove(playerId);
+            if (order.isEmpty()) {
+                roomPlayersOrder.remove(roomId);
+            }
+        }
+
+        RoomMeta meta = roomMeta.get(roomId);
+        if (meta != null) {
+            // If host leaves, promote first remaining player in join order.
+            if (meta.hostPlayerId != null && meta.hostPlayerId.equals(playerId)) {
+                List<String> remaining = roomPlayersOrder.get(roomId);
+                if (remaining != null && !remaining.isEmpty()) {
+                    meta.hostPlayerId = remaining.get(0);
+                } else {
+                    roomMeta.remove(roomId);
+                    meta = null;
+                }
+            }
+        }
+
+        publishRoomState(roomId);
+        System.out.println("[PLAYER_LEAVE] " + playerId + " left room: " + roomId);
     }
 
     /**
@@ -224,6 +279,45 @@ public class SHA_GameController {
         messagingTemplate.convertAndSend("/topic/room/" + roomId + "/map", msg);
     }
 
+    /**
+     * Host selects lap count for this room.
+     * Payload: { roomId, hostPlayerId | playerId, lapCount }
+     */
+    @MessageMapping("/room.laps.select")
+    public void handleRoomLapsSelect(Map<String, Object> payload) {
+        if (payload == null) return;
+        Object roomRaw = payload.get("roomId");
+        Object hostRaw = payload.get("hostPlayerId") != null ? payload.get("hostPlayerId") : payload.get("playerId");
+        Object lapsRaw = payload.get("lapCount");
+        if (!(roomRaw instanceof String roomId) || roomId.isBlank()) return;
+        if (lapsRaw == null) return;
+
+        int lapCount;
+        try {
+            lapCount = Integer.parseInt(String.valueOf(lapsRaw));
+        } catch (NumberFormatException ex) {
+            return;
+        }
+        if (lapCount != 1 && lapCount != 3 && lapCount != 5) return;
+
+        String hostPlayerId = hostRaw == null ? null : String.valueOf(hostRaw);
+        RoomMeta meta = roomMeta.computeIfAbsent(roomId, k -> new RoomMeta());
+
+        if (meta.hostPlayerId == null || meta.hostPlayerId.isBlank()) {
+            meta.hostPlayerId = hostPlayerId;
+        } else if (hostPlayerId == null || !meta.hostPlayerId.equals(hostPlayerId)) {
+            System.out.println("[ROOM_LAPS_SELECT] rejected non-host: " + hostPlayerId + " room=" + roomId);
+            return;
+        }
+
+        meta.lapCount = lapCount;
+        Map<String, Object> msg = new HashMap<>();
+        msg.put("lapCount", lapCount);
+        msg.put("hostPlayerId", meta.hostPlayerId != null ? meta.hostPlayerId : "");
+        System.out.println("[ROOM_LAPS_SELECT] room=" + roomId + " lapCount=" + lapCount + " host=" + meta.hostPlayerId);
+        messagingTemplate.convertAndSend("/topic/room/" + roomId + "/laps", msg);
+    }
+
     // ─────────────────────────────────────────────────────────────────────────
     // 3. Ping / Pong — health check for the presentation demo
     // ─────────────────────────────────────────────────────────────────────────
@@ -248,12 +342,22 @@ public class SHA_GameController {
      */
     @MessageMapping("/game.start")
     public void handleGameStart(Map<String, String> payload) {
+        if (payload == null) return;
         String roomId = payload.get("roomId");
+        String playerId = payload.get("playerId");
         if (roomId != null) {
             RoomMeta meta = roomMeta.get(roomId);
             if (meta == null || meta.mapId == null || meta.mapId.isBlank()) {
                 System.out.println("[GAME_START] rejected (no map selected) roomId: " + roomId);
                 return;
+            }
+            if (meta.hostPlayerId != null && !meta.hostPlayerId.isBlank()) {
+                if (playerId == null || !meta.hostPlayerId.equals(playerId)) {
+                    System.out.println("[GAME_START] rejected non-host: " + playerId + " roomId: " + roomId);
+                    return;
+                }
+            } else if (playerId != null && !playerId.isBlank()) {
+                meta.hostPlayerId = playerId;
             }
             long startAt = System.currentTimeMillis() + 3000; // 3 second synchronized countdown
             meta.startAtEpochMs = startAt;
@@ -261,10 +365,93 @@ public class SHA_GameController {
             Map<String, Object> startMsg = new HashMap<>();
             startMsg.put("startAtEpochMs", startAt);
             startMsg.put("mapId", meta.mapId);
+            startMsg.put("lapCount", meta.lapCount > 0 ? meta.lapCount : 3);
 
             System.out.println("[GAME_START] roomId: " + roomId + " startAt=" + startAt + " mapId=" + meta.mapId);
             messagingTemplate.convertAndSend("/topic/room/" + roomId + "/start", startMsg);
         }
+    }
+
+    /**
+     * Resets race state for all players in a room and notifies clients.
+     * Frontend can use this to redeploy everyone back to lobby in sync.
+     */
+    @MessageMapping("/game.reset")
+    public void handleGameReset(Map<String, String> payload) {
+        if (payload == null) return;
+        String roomId = payload.get("roomId");
+        if (roomId == null || roomId.isBlank()) return;
+
+        Map<String, SHA_CarState> room = gameRooms.get(roomId);
+        long now = System.currentTimeMillis();
+
+        if (room != null) {
+            for (SHA_CarState state : room.values()) {
+                state.setStatus("WAITING");
+                state.setLapsCompleted(0);
+                state.setFinishTime(0);
+                state.setTotalTime(0);
+                state.setTimestamp(now);
+            }
+            messagingTemplate.convertAndSend("/topic/room/" + roomId + "/players", new ArrayList<>(room.values()));
+        }
+
+        RoomMeta meta = roomMeta.get(roomId);
+        if (meta != null) {
+            meta.startAtEpochMs = null;
+        }
+
+        Map<String, Object> resetMsg = new HashMap<>();
+        resetMsg.put("roomId", roomId);
+        resetMsg.put("resetAtEpochMs", now);
+        if (meta != null && meta.mapId != null) {
+            resetMsg.put("mapId", meta.mapId);
+        }
+        if (meta != null && meta.lapCount > 0) {
+            resetMsg.put("lapCount", meta.lapCount);
+        }
+
+        System.out.println("[GAME_RESET] roomId: " + roomId);
+        messagingTemplate.convertAndSend("/topic/room/" + roomId + "/reset", resetMsg);
+    }
+
+    private void publishRoomState(String roomId) {
+        Map<String, SHA_CarState> room = gameRooms.get(roomId);
+        List<SHA_CarState> currentPlayers = room == null
+            ? new ArrayList<>()
+            : new ArrayList<>(room.values());
+        messagingTemplate.convertAndSend("/topic/room/" + roomId + "/players", currentPlayers);
+
+        List<String> order = roomPlayersOrder.get(roomId);
+        Map<String, Integer> slots = new HashMap<>();
+        if (order != null) {
+            for (int i = 0; i < order.size(); i++) {
+                slots.put(order.get(i), i);
+            }
+        }
+        messagingTemplate.convertAndSend("/topic/room/" + roomId + "/slots", slots);
+
+        RoomMeta meta = roomMeta.get(roomId);
+        if (meta != null && meta.mapId != null && !meta.mapId.isBlank()) {
+            Map<String, String> msg = new HashMap<>();
+            msg.put("mapId", meta.mapId);
+            msg.put("hostPlayerId", meta.hostPlayerId != null ? meta.hostPlayerId : "");
+            messagingTemplate.convertAndSend("/topic/room/" + roomId + "/map", msg);
+        }
+
+        if (meta != null) {
+            Map<String, Object> lapsMsg = new HashMap<>();
+            lapsMsg.put("lapCount", meta.lapCount > 0 ? meta.lapCount : 3);
+            lapsMsg.put("hostPlayerId", meta.hostPlayerId != null ? meta.hostPlayerId : "");
+            messagingTemplate.convertAndSend("/topic/room/" + roomId + "/laps", lapsMsg);
+        }
+    }
+
+    private int getLapTarget(String roomId) {
+        RoomMeta meta = roomMeta.get(roomId);
+        if (meta == null) return 3;
+        if (meta.lapCount == 1 || meta.lapCount == 3 || meta.lapCount == 5) return meta.lapCount;
+        return 3;
     }
 
 

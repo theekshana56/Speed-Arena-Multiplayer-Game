@@ -41,6 +41,10 @@ export default function RacePage() {
   const roomId = sessionStorage.getItem("roomId") || "room_001";
   const playerId = useMemo(() => getOrCreateNetworkPlayerId(), []);
   const [mapId, setMapId] = useState(() => canonicalMapId(sessionStorage.getItem("mapId")));
+  const [lapsTarget, setLapsTarget] = useState(() => {
+    const v = Number(sessionStorage.getItem("lapsTarget"));
+    return v === 1 || v === 3 || v === 5 ? v : 3;
+  });
   const [startAtEpochMs, setStartAtEpochMs] = useState(() => {
     const v = Number(sessionStorage.getItem("startAtEpochMs"));
     return Number.isFinite(v) && v > 0 ? v : null;
@@ -71,6 +75,7 @@ export default function RacePage() {
   const isRacingRef = useRef(false);
   const playerIdRef = useRef(playerId);
   const winnerRef = useRef(null);
+  const lapsTargetRef = useRef(lapsTarget);
   const unityInstanceRef = useRef(null);
   // Debug helper: avoid console spam. We log each remote playerId at most once/sec.
   const lastForwardAtByPlayerRef = useRef({});
@@ -94,6 +99,7 @@ export default function RacePage() {
   useEffect(() => { isRacingRef.current = isRacing; }, [isRacing]);
   useEffect(() => { playerIdRef.current = playerId; }, [playerId]);
   useEffect(() => { winnerRef.current = winner; }, [winner]);
+  useEffect(() => { lapsTargetRef.current = lapsTarget; }, [lapsTarget]);
   useEffect(() => {
     const gs = clampGridSlot(startIndex);
     gridSlotRef.current = gs;
@@ -117,6 +123,16 @@ export default function RacePage() {
     setIsRacing(false);
   };
 
+  const leaveRoomAndNavigate = (targetPath) => {
+    clientRef.current?.publish({
+      destination: "/app/player.leave",
+      body: JSON.stringify({ roomId, playerId }),
+    });
+    stopRacing();
+    clientRef.current?.deactivate();
+    navigate(targetPath);
+  };
+
   // Legacy draw loop removed as it is now handled by GameCanvas
 
   // WebSocket connect on mount (session identity fixed for this page visit)
@@ -127,7 +143,7 @@ export default function RacePage() {
       onConnect: () => {
         setConnected(true);
         addLog(`✅ Link established as ${playerId}`);
-        client.subscribe("/topic/game-state", msg => {
+        client.subscribe(`/topic/room/${roomId}/game-state`, msg => {
           const car = JSON.parse(msg.body);
           if (car.roomId && car.roomId !== roomId) return;
 
@@ -156,7 +172,7 @@ export default function RacePage() {
 
           // Only the *local* player's finish should open results — remote finishes are in `cars` only.
           if (
-            car.lapsCompleted >= 3 &&
+            car.lapsCompleted >= lapsTargetRef.current &&
             !winnerRef.current &&
             isRacingRef.current &&
             String(car.playerId) === String(playerIdRef.current)
@@ -218,6 +234,24 @@ export default function RacePage() {
                 setMapId(m);
                 sessionStorage.setItem("mapId", m);
               }
+            }
+            const n = Number(data?.lapCount);
+            if (n === 1 || n === 3 || n === 5) {
+              setLapsTarget(n);
+              sessionStorage.setItem("lapsTarget", String(n));
+            }
+          } catch {
+            // ignore
+          }
+        });
+
+        client.subscribe(`/topic/room/${roomId}/laps`, (msg) => {
+          try {
+            const data = JSON.parse(msg.body);
+            const n = Number(data?.lapCount);
+            if (n === 1 || n === 3 || n === 5) {
+              setLapsTarget(n);
+              sessionStorage.setItem("lapsTarget", String(n));
             }
           } catch {
             // ignore
@@ -388,8 +422,8 @@ export default function RacePage() {
   const leaderboardCars = useMemo(() => {
     return [...Object.values(cars)]
       .sort((a, b) => {
-        const aFinished = a?.status === "FINISHED" || (a?.lapsCompleted ?? 0) >= 3;
-        const bFinished = b?.status === "FINISHED" || (b?.lapsCompleted ?? 0) >= 3;
+        const aFinished = a?.status === "FINISHED" || (a?.lapsCompleted ?? 0) >= lapsTarget;
+        const bFinished = b?.status === "FINISHED" || (b?.lapsCompleted ?? 0) >= lapsTarget;
 
         if (aFinished && bFinished) {
           const byFinishTime = getFinishOrderValue(a) - getFinishOrderValue(b);
@@ -404,7 +438,7 @@ export default function RacePage() {
 
         return (b?.timestamp ?? 0) - (a?.timestamp ?? 0);
       });
-  }, [cars]);
+  }, [cars, lapsTarget]);
 
   const handleUnityLocalCarState = (jsonStr) => {
     let o;
@@ -427,7 +461,7 @@ export default function RacePage() {
     }
 
     if (
-      o.lapsCompleted >= 3 &&
+      o.lapsCompleted >= lapsTarget &&
       isRacingRef.current &&
       !winnerRef.current &&
       o.playerId === playerIdRef.current
@@ -480,7 +514,7 @@ export default function RacePage() {
       // Backend does not reliably fill `totalTime` in realtime updates.
       // Prefer finishTime (epoch ms) if present; otherwise fall back to timestamp.
       const finishersSorted = Object.values(cars)
-          .filter(c => c?.status === "FINISHED" || (c?.lapsCompleted ?? 0) >= 3)
+          .filter(c => c?.status === "FINISHED" || (c?.lapsCompleted ?? 0) >= lapsTarget)
           .sort((a, b) => {
             const byFinishTime = getFinishOrderValue(a) - getFinishOrderValue(b);
             if (byFinishTime !== 0) return byFinishTime;
@@ -543,7 +577,7 @@ export default function RacePage() {
       
       saveResult();
     }
-  }, [winner, resultsSent, cars, playerId]);
+  }, [winner, resultsSent, cars, playerId, lapsTarget]);
 
 
   const [dimensions, setDimensions] = useState({ 
@@ -627,18 +661,21 @@ export default function RacePage() {
               </button>
               <div style={s.winnerBtns}>
               <button onClick={() => { 
-                setWinner(null); 
-                setLaps(0); 
-                lapRef.current = 0; 
-                setResultsSent(false); 
+                // Reliable redeploy flow: go back to lobby in same room,
+                // then host can start next race with normal synchronized flow.
+                setWinner(null);
+                setLaps(0);
+                lapRef.current = 0;
+                setResultsSent(false);
                 setRaceStats(null);
                 setResultSaveState("idle");
-                setCars({});
                 setStartAtEpochMs(null);
                 sessionStorage.removeItem("startAtEpochMs");
                 setIsRacing(false);
+                addLog("🔄 Redeploy: returning to lobby.");
+                navigate("/lobby");
               }} style={{ ...s.playAgainBtn, background: color, boxShadow: `0 0 20px ${color}40` }}>RE-DEPLOY</button>
-              <button onClick={() => navigate("/home")} style={s.homeBtn}>← TERMINAL</button>
+              <button onClick={() => leaveRoomAndNavigate("/home")} style={s.homeBtn}>← TERMINAL</button>
               </div>
             </div>
           </div>
@@ -648,11 +685,11 @@ export default function RacePage() {
 
       {/* Top HUD */}
       <div style={s.hud}>
-        <button onClick={() => { stopRacing(); navigate("/lobby"); }} style={s.backBtn}>← LOBBY</button>
+        <button onClick={() => leaveRoomAndNavigate("/lobby")} style={s.backBtn}>← LOBBY</button>
 
         <div style={s.hudCenter}>
           <div style={{ ...s.lapDisplay, color, textShadow: `0 0 10px ${color}60` }}>
-            LAP <span style={{ fontSize: "28px" }}>{laps}</span> <span style={{ color: "rgba(255,255,255,0.2)" }}>/ 3</span>
+            LAP <span style={{ fontSize: "28px" }}>{laps}</span> <span style={{ color: "rgba(255,255,255,0.2)" }}>/ {lapsTarget}</span>
           </div>
         </div>
 
