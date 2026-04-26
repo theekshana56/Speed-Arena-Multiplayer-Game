@@ -6,6 +6,7 @@ import { canonicalMapId } from "../game/track/polylineTrack.js";
 import { getOrCreateNetworkPlayerId } from "../session/playerIdentity.js";
 import { clampGridSlot } from "../utils/gridSlot.js";
 import { PALETTE } from "../theme/midnightSpark.js";
+import ChatBox from "../components/ChatBox.jsx";
 
 const WS_URL = "http://127.0.0.1:8080/ws-racing";
 const CAR_COLORS = { 
@@ -41,6 +42,11 @@ export default function RoomLobbyPage() {
   const [slots, setSlots] = useState({});
   const [copied, setCopied]       = useState(false);
   const [dots, setDots]           = useState(".");
+  const [playerName, setPlayerName] = useState(() => {
+    const stored = sessionStorage.getItem("playerName");
+    return stored || playerId.substring(0, 8).toUpperCase();
+  });
+  const [chatMessages, setChatMessages] = useState([]);
   const clientRef = useRef(null);
   const hasPublishedJoinRef = useRef(false);
 
@@ -65,6 +71,7 @@ export default function RoomLobbyPage() {
       webSocketFactory: () => new SockJS(WS_URL),
 
       onConnect: () => {
+        console.log("[WS_CONNECTED] WebSocket connected to", WS_URL);
         setConnected(true);
 
         // Subscribe to room-specific player list updates
@@ -155,12 +162,41 @@ export default function RoomLobbyPage() {
             // ignore
           }
         });
+
+        // Subscribe to chat messages
+        const chatSub = client.subscribe(`/topic/room/${roomId}/chat`, (msg) => {
+          try {
+            console.log("[CHAT_RX_RAW]", msg.body);
+            const chatMessage = JSON.parse(msg.body);
+            console.log("[CHAT_RX_PARSED]", chatMessage);
+            setChatMessages((prev) => {
+              console.log("[CHAT_UPDATE] Adding message, total will be:", prev.length + 1);
+              return [...prev, chatMessage];
+            });
+          } catch (e) {
+            console.error("[CHAT_PARSE_ERROR]", e);
+          }
+        }, (error) => {
+          console.error("[CHAT_SUB_ERROR]", error);
+        });
+        console.log("[CHAT_SUB_OK] Subscribed to /topic/room/" + roomId + "/chat");
       },
 
-      onDisconnect: () => setConnected(false),
-      onStompError: () => setConnected(false),
+      onDisconnect: () => {
+        console.log("[WS_DISCONNECTED]");
+        setConnected(false);
+      },
+      onStompError: (error) => {
+        console.error("[WS_STOMP_ERROR]", error);
+        setConnected(false);
+      },
+      onWebSocketError: (error) => {
+        console.error("[WS_SOCKET_ERROR]", error);
+        setConnected(false);
+      }
     });
 
+    console.log("[WS_CONNECTING] Attempting to connect to", WS_URL);
     client.activate();
     clientRef.current = client;
 
@@ -230,6 +266,43 @@ export default function RoomLobbyPage() {
     navigator.clipboard.writeText(roomId).catch(() => {});
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const sendChatMessage = (messageText) => {
+    if (!clientRef.current) {
+      console.error("[CHAT_SEND_ERROR] No client available");
+      return;
+    }
+
+    if (!connected) {
+      console.error("[CHAT_SEND_ERROR] Not connected");
+      return;
+    }
+
+    if (!messageText || messageText.trim().length === 0) {
+      console.error("[CHAT_SEND_ERROR] Empty message");
+      return;
+    }
+
+    const chatMessage = {
+      playerId,
+      playerName,
+      roomId,
+      message: messageText,
+      timestamp: Date.now(),
+    };
+
+    console.log("[CHAT_SEND_ATTEMPT]", chatMessage);
+
+    try {
+      clientRef.current.publish({
+        destination: "/app/chat.send",
+        body: JSON.stringify(chatMessage),
+      });
+      console.log("[CHAT_SEND_OK] Message published");
+    } catch (e) {
+      console.error("[CHAT_SEND_EXCEPTION]", e);
+    }
   };
 
   const myColor = CAR_COLORS[carColor] || "#ff3333";
@@ -504,6 +577,17 @@ export default function RoomLobbyPage() {
                 {step}
               </div>
             ))}
+          </div>
+
+          {/* Lobby chat box */}
+          <div style={{ height: "280px", display: "flex", flexDirection: "column" }}>
+            <ChatBox 
+              messages={chatMessages}
+              onSendMessage={sendChatMessage}
+              playerId={playerId}
+              playerName={playerName}
+              connected={connected}
+            />
           </div>
         </div>
       </div>
