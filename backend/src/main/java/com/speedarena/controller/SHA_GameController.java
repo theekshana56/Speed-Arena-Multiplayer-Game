@@ -1,6 +1,7 @@
 package com.speedarena.controller;
 
 import com.speedarena.dto.SHA_CarState;
+import com.speedarena.dto.ChatMessage;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.SendTo;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
@@ -454,9 +455,61 @@ public class SHA_GameController {
         return 3;
     }
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // 5. Chat — lobby chat before race starts
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Handles chat messages from players in the lobby.
+     * Broadcasts to all players in the same room.
+     *
+     * Frontend sends to:  /app/chat.send
+     * Room clients get:   /topic/room/{roomId}/chat
+     */
+    @MessageMapping("/chat.send")
+    public void handleChatMessage(ChatMessage chatMessage) {
+        try {
+            System.out.println("[CHAT_HANDLER_ENTRY] Method called with: " + (chatMessage == null ? "null" : chatMessage.getClass().getSimpleName()));
+            
+            if (chatMessage == null) {
+                System.err.println("[CHAT_ERROR] Received null chat message");
+                return;
+            }
+            
+            String roomId = chatMessage.getRoomId();
+            String message = chatMessage.getMessage();
+            
+            System.out.println("[CHAT_DEBUG] Received: playerId=" + chatMessage.getPlayerId() 
+                + ", playerName=" + chatMessage.getPlayerName()
+                + ", roomId=" + roomId + ", message=" + message);
+            
+            if (roomId == null || roomId.isBlank()) {
+                System.err.println("[CHAT_ERROR] Missing roomId");
+                return;
+            }
+            
+            if (message == null || message.isBlank()) {
+                System.err.println("[CHAT_ERROR] Missing message text");
+                return;
+            }
+
+            chatMessage.setTimestamp(System.currentTimeMillis());
+            
+            String topicDestination = "/topic/room/" + roomId + "/chat";
+            System.out.println("[CHAT_BROADCAST] Sending to " + topicDestination);
+            System.out.println("[CHAT_MESSAGE] " + chatMessage);
+            
+            messagingTemplate.convertAndSend(topicDestination, chatMessage);
+            System.out.println("[CHAT_OK] Message broadcasted successfully");
+        } catch (Exception e) {
+            System.err.println("[CHAT_EXCEPTION] Error in handleChatMessage:");
+            e.printStackTrace();
+        }
+    }
+
 
     // ─────────────────────────────────────────────────────────────────────────
-    // 4. Helper — get all players in a room (REST-accessible for debugging)
+    // 6. Helper — get all players in a room (REST-accessible for debugging)
     // ─────────────────────────────────────────────────────────────────────────
 
     /**
